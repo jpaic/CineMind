@@ -5,12 +5,11 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 export async function sendWelcomeEmail(email, username) {
   try {
     if (!process.env.RESEND_API_KEY) {
-      console.log('📧 [MOCK] Welcome email to:', email);
       return { success: true, mock: true };
     }
 
     const data = await resend.emails.send({
-      from: 'CineMind <CineMindApp@outlook.com>',
+      from: "CineMind <onboarding@resend.dev>",
       to: [email],
       subject: 'Welcome to CineMind! 🎬',
       html: `
@@ -36,26 +35,22 @@ export async function sendWelcomeEmail(email, username) {
       `
     });
 
-    console.log('✅ Email sent successfully:', data);
     return { success: true, data };
   } catch (error) {
-    console.error('❌ Email error:', error);
     return { success: false, error: error.message };
   }
 }
 
-// Send password reset email (for future implementation)
 export async function sendPasswordResetEmail(email, resetToken) {
   try {
     if (!process.env.RESEND_API_KEY) {
-      console.log('📧 [MOCK] Password reset email to:', email);
       return { success: true, mock: true };
     }
 
     const resetUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/reset-password?token=${resetToken}`;
 
     const data = await resend.emails.send({
-      from: 'CineMind <CineMindApp@outlook.com>',
+      from: "CineMind <onboarding@resend.dev>",
       to: [email],
       subject: 'Reset Your CineMind Password',
       html: `
@@ -74,10 +69,8 @@ export async function sendPasswordResetEmail(email, resetToken) {
       `
     });
 
-    console.log('✅ Password reset email sent:', data);
     return { success: true, data };
   } catch (error) {
-    console.error('❌ Email error:', error);
     return { success: false, error: error.message };
   }
 }
