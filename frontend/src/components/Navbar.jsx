@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { authUtils } from '../utils/authUtils';
 import logo from '../assets/logo.png';
 
 export default function Navbar({ loggedIn, onLogout, activeTab, setActiveTab }) {
@@ -9,6 +10,22 @@ export default function Navbar({ loggedIn, onLogout, activeTab, setActiveTab }) 
   const handleLogout = () => {
     if (onLogout) onLogout();
     navigate('/', { replace: true });
+  };
+
+  const handleLoginClick = () => {
+    if (authUtils.isAuthenticated()) {
+      navigate('/dashboard');
+    } else {
+      navigate('/login');
+    }
+  };
+
+  const handleSignupClick = () => {
+    if (authUtils.isAuthenticated()) {
+      navigate('/dashboard');
+    } else {
+      navigate('/login?signup=true');
+    }
   };
 
   const isAuthPage = location.pathname.startsWith('/login');
@@ -74,13 +91,13 @@ export default function Navbar({ loggedIn, onLogout, activeTab, setActiveTab }) 
             <div className="flex flex-col md:flex-row items-center md:space-x-4 space-y-2 md:space-y-0 w-full md:w-auto">
               <button
                 className="hover:text-blue-400 transition w-full md:w-auto"
-                onClick={() => navigate('/login')}
+                onClick={handleLoginClick}
               >
                 Login
               </button>
               <button
                 className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-md font-semibold transition w-full md:w-auto"
-                onClick={() => navigate('/login?signup=true')}
+                onClick={handleSignupClick}
               >
                 Sign Up
               </button>

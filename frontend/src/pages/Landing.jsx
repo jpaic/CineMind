@@ -1,14 +1,25 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { authUtils } from '../utils/authUtils';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import Logo from '../assets/logo.png';
 
 export default function Landing() {
   const [show, setShow] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     setShow(true);
   }, []);
+
+  const handleGetStarted = () => {
+    if (authUtils.isAuthenticated()) {
+      navigate('/dashboard');
+    } else {
+      navigate('/login?signup=true');
+    }
+  };
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-900 text-white">
@@ -32,7 +43,7 @@ export default function Landing() {
 
         <button
           className={`w-full sm:w-auto bg-blue-600 hover:bg-blue-700 px-6 sm:px-8 py-3 rounded-md font-semibold text-lg transition-opacity duration-700 delay-700 ${show ? 'opacity-100' : 'opacity-0'}`}
-          onClick={() => window.location.href = '/login?signup=true'}
+          onClick={handleGetStarted}
         >
           Get Started
         </button>

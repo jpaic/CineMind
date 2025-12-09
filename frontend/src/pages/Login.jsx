@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { authUtils } from "../utils/authUtils";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { loginUser, registerUser } from "../api/auth";
@@ -19,6 +20,7 @@ export default function Login({ onLogin }) {
     password: ""
   });
 
+  const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -46,7 +48,7 @@ export default function Login({ onLogin }) {
         return;
       }
 
-      localStorage.setItem("token", res.token);
+      authUtils.setAuth(res.token, form.username, rememberMe);
       onLogin();
       navigate("/dashboard");
 
@@ -125,6 +127,24 @@ export default function Login({ onLogin }) {
                 </div>
               )}
             </div>
+
+            {!isSignup && (
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="rememberMe"
+                  checked={rememberMe}
+                  onChange={(e) => setRememberMe(e.target.checked)}
+                  className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2 cursor-pointer"
+                />
+                <label 
+                  htmlFor="rememberMe" 
+                  className="ml-2 text-sm text-gray-300 cursor-pointer select-none"
+                >
+                  Remember me
+                </label>
+              </div>
+            )}
 
             <button
               type="submit"
