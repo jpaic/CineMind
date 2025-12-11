@@ -32,9 +32,9 @@ export async function register(req, res) {
 
     const user = await registerService(username, email, password);
 
-    sendWelcomeEmail(email, username).catch(err => 
+    /*sendWelcomeEmail(email, username).catch(err => 
       console.error('Failed to send welcome email:', err)
-    );
+    );*/
 
     res.status(201).json({ success: true, user });
   } catch (err) {
