@@ -17,7 +17,7 @@ export default function Login({ onLogin }) {
   const [form, setForm] = useState({
     username: "",
     email: "",
-    password: ""
+    password: "",
   });
 
   const [rememberMe, setRememberMe] = useState(false);
@@ -49,9 +49,9 @@ export default function Login({ onLogin }) {
       }
 
       authUtils.setAuth(res.token, form.username, rememberMe);
+
       onLogin();
       navigate("/dashboard");
-
     } catch (err) {
       console.error("Login error:", err);
       setError("Server error. Try again.");
@@ -76,6 +76,7 @@ export default function Login({ onLogin }) {
           )}
 
           <form className="flex flex-col space-y-4" onSubmit={handleSubmit}>
+            {/* Username */}
             <div>
               <input
                 type="text"
@@ -93,6 +94,7 @@ export default function Login({ onLogin }) {
               )}
             </div>
 
+            {/* Email (signup only) */}
             {isSignup && (
               <input
                 type="email"
@@ -105,6 +107,7 @@ export default function Login({ onLogin }) {
               />
             )}
 
+            {/* Password */}
             <div>
               <input
                 type="password"
@@ -128,6 +131,7 @@ export default function Login({ onLogin }) {
               )}
             </div>
 
+            {/* Remember me (login only) */}
             {!isSignup && (
               <div className="flex items-center">
                 <input
@@ -137,8 +141,8 @@ export default function Login({ onLogin }) {
                   onChange={(e) => setRememberMe(e.target.checked)}
                   className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2 cursor-pointer"
                 />
-                <label 
-                  htmlFor="rememberMe" 
+                <label
+                  htmlFor="rememberMe"
                   className="ml-2 text-sm text-gray-300 cursor-pointer select-none"
                 >
                   Remember me
@@ -146,25 +150,30 @@ export default function Login({ onLogin }) {
               </div>
             )}
 
+            {/* Submit button */}
             <button
               type="submit"
               disabled={loading}
               className="bg-blue-600 hover:bg-blue-700 py-2 rounded-md font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? "Loading..." : (isSignup ? "Sign Up" : "Login")}
+              {loading ? "Loading..." : isSignup ? "Sign Up" : "Login"}
             </button>
           </form>
 
+          {/* Switch Login/Signup */}
           <p className="text-sm text-gray-400 mt-4 text-center">
             {isSignup ? "Already have an account?" : "Don't have an account?"}{" "}
             <span
               className="text-blue-400 hover:underline cursor-pointer"
-              onClick={() => navigate(isSignup ? '/login' : '/login?signup=true')}
+              onClick={() =>
+                navigate(isSignup ? "/login" : "/login?signup=true")
+              }
             >
               {isSignup ? "Login" : "Sign Up"}
             </span>
           </p>
 
+          {/* Signup disclaimer */}
           {isSignup && (
             <p className="text-xs text-gray-500 mt-4 text-center">
               By signing up, you agree this is a demo project for portfolio purposes.
