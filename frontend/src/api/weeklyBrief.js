@@ -117,7 +117,6 @@ Write ONLY the brief content - no titles, headers, or extra formatting.`;
       }
 
       const data = await response.json();
-      console.log('Groq API response data:', data);
       
       const content = data.choices[0].message.content.trim();
       console.log('Generated content:', content);

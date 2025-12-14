@@ -1,0 +1,97 @@
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { tmdbService } from '../api/tmdb';
+import Card from '../components/Card';
+import CardSkeleton from '../components/CardSkeleton';
+
+export default function PopularMovies() {
+  const navigate = useNavigate();
+  const [movies, setMovies] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchPopularMovies = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        // Fetch popular movies
+        const popularData = await tmdbService.getPopular();
+        setMovies(popularData);
+      } catch (err) {
+        console.error('Failed to fetch popular movies:', err);
+        setError('Failed to load popular movies. Please try again.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPopularMovies();
+  }, []);
+
+  return (
+    <div className="px-6 py-12 min-h-screen">
+      <div className="max-w-7xl mx-auto w-full">
+        {/* Header with back button */}
+        <div className="mb-8">
+          <button
+            onClick={() => navigate('/home')}
+            className="flex items-center gap-2 text-slate-400 hover:text-purple-400 transition-colors mb-4 group"
+          >
+            <svg 
+              className="w-5 h-5 group-hover:-translate-x-1 transition-transform" 
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            Back to Home
+          </button>
+          <h1 className="text-4xl font-bold mb-2 text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400">
+            Popular Movies
+          </h1>
+          <p className="text-slate-400">Highest-rated movies from the last 3 months</p>
+        </div>
+
+        {/* Error State */}
+        {error && (
+          <div className="bg-red-900/20 border border-red-500/50 rounded-lg p-4 mb-8">
+            <p className="text-red-400">{error}</p>
+          </div>
+        )}
+
+        {/* Loading State */}
+        {loading && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+            {[...Array(10)].map((_, i) => (
+              <CardSkeleton key={i} />
+            ))}
+          </div>
+        )}
+
+        {/* Movies Grid */}
+        {!loading && movies.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+            {movies.map((movie, i) => (
+              <div key={movie.id}>
+                <Card movie={movie} showRating={true} index={i} />
+                <div className="mt-3">
+                  <h3 className="font-semibold text-slate-50 text-sm mb-1">{movie.title}</h3>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Empty State */}
+        {!loading && movies.length === 0 && !error && (
+          <div className="text-center py-12">
+            <p className="text-slate-400 text-lg">No popular movies found</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
