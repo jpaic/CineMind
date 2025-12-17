@@ -5,7 +5,7 @@ import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import Logo from '../assets/logo.png';
 
-export default function Landing({ onNavigateToHome }) {
+export default function Landing({ onStartTransition }) {
   const [show, setShow] = useState(false);
   const navigate = useNavigate();
 
@@ -15,27 +15,28 @@ export default function Landing({ onNavigateToHome }) {
 
   const handleGetStarted = () => {
     if (authUtils.isAuthenticated()) {
-      if (onNavigateToHome) {
-        onNavigateToHome();
+      // Has cookies - show transition before going to home
+      console.log('[Landing] User authenticated, starting transition');
+      if (onStartTransition) {
+        onStartTransition();
       }
-      setTimeout(() => {
-        navigate('/home');
-      }, 1200);
     } else {
+      // Not authenticated - go straight to login (no transition)
+      console.log('[Landing] User not authenticated, going to login');
       navigate('/login?signup=true');
     }
   };
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-900 text-white">
-      <Navbar />
+      <Navbar onStartTransition={onStartTransition} onNavigateToHome={onStartTransition} />
 
       <section className="flex flex-col items-center justify-center flex-1 text-center px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900">
         
         <img
           src={Logo}
           alt="Logo"
-          className={`w-32 h-32 sm:w-40 sm:h-40 md:w-48 md:h-48 mb-6 transition-opacity duration-700 delay-100 ${show ? 'opacity-100' : 'opacity-0'}`}
+          className={`w-32 h-32 sm:w-40 sm:h-40 md:w-48 md:h-48 mb-6 transition-opacity duration-700 delay-100 ${show ? 'opacity-100' : 'opacity-0'} -mt-20`}
         />
 
         <h1 className={`text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold mb-4 transition-opacity duration-700 delay-300 ${show ? 'opacity-100' : 'opacity-0'}`}>

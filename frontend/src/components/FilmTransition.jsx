@@ -1,8 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 
-// Film strip row component
 const FilmStripRow = ({ delay, index }) => {
-  // Varying colors for each strip
   const colors = [
     'from-slate-800 via-slate-700 to-slate-800',
     'from-slate-800 via-slate-600 to-slate-800',
@@ -11,7 +9,6 @@ const FilmStripRow = ({ delay, index }) => {
     'from-gray-800 via-slate-700 to-gray-800',
   ];
   
-  // Random sepia/blue tints
   const tints = [
     'bg-orange-500/5',
     'bg-blue-500/5',
@@ -24,156 +21,91 @@ const FilmStripRow = ({ delay, index }) => {
   const tintClass = tints[index % tints.length];
   
   return (
-    <div 
-      className="film-strip-row"
-      style={{
-        animationDelay: `${delay}ms`
-      }}
-    >
-      {/* Light leak effect */}
-      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-orange-400/10 to-transparent opacity-0 light-leak" />
-      
-      {/* Color tint overlay */}
+    <div className="film-strip" style={{ animationDelay: `${delay}ms` }}>
       <div className={`absolute inset-0 ${tintClass}`} />
-      
-      {/* Film holes on top */}
+
+      {/* Top sprockets */}
       <div className="flex absolute top-0 left-0 right-0 h-3 gap-4 bg-slate-900 overflow-hidden">
         {[...Array(100)].map((_, i) => (
-          <div 
-            key={`top-${i}`} 
-            className="w-2 h-2 bg-slate-950 rounded-full mt-0.5 flex-shrink-0 film-hole"
-          />
+          <div key={`top-${i}`} className="w-2 h-2 bg-slate-950 rounded-full mt-0.5 flex-shrink-0" />
         ))}
       </div>
-      
-      {/* Main film strip area with grain */}
+
+      {/* Film frame */}
       <div className={`absolute inset-0 top-3 bottom-3 bg-gradient-to-r ${colorClass}`}>
         <div className="absolute inset-0 film-grain opacity-20" />
-        
-        {/* Film scratches */}
         <div className="absolute inset-0 overflow-hidden">
           <div className="film-scratch" style={{ left: `${20 + index * 15}%` }} />
           <div className="film-scratch" style={{ left: `${60 + index * 10}%` }} />
         </div>
-        
-        {/* Vignette */}
         <div className="absolute inset-0 vignette" />
       </div>
-      
-      {/* Film holes on bottom */}
+
+      {/* Bottom sprockets */}
       <div className="flex absolute bottom-0 left-0 right-0 h-3 gap-4 bg-slate-900 overflow-hidden">
         {[...Array(100)].map((_, i) => (
-          <div 
-            key={`bottom-${i}`} 
-            className="w-2 h-2 bg-slate-950 rounded-full mt-0.5 flex-shrink-0 film-hole"
-          />
+          <div key={`bottom-${i}`} className="w-2 h-2 bg-slate-950 rounded-full mt-0.5 flex-shrink-0" />
         ))}
       </div>
     </div>
   );
 };
 
-// Main transition component
 export default function FilmTransition({ onComplete }) {
-  const [phase, setPhase] = useState('animating');
-  
+  const [completed, setCompleted] = useState(false);
   const rows = 7;
-  const delays = React.useMemo(() => {
+
+  // Staggered delays
+  const delays = useMemo(() => {
     const baseDelays = Array.from({ length: rows }, (_, i) => i * 60);
     return baseDelays.sort(() => Math.random() - 0.5);
-  }, []);
+  }, [rows]);
 
   const maxDelay = Math.max(...delays);
+  const totalDuration = maxDelay + 2100; // 2100ms = slide animation duration
 
+  // Trigger onComplete after total duration
   useEffect(() => {
-    const completeTimer = setTimeout(() => {
-      setPhase('complete');
+    const timer = setTimeout(() => {
+      setCompleted(true);
       if (onComplete) onComplete();
-    }, maxDelay + 2300);
+    }, totalDuration);
 
-    return () => {
-      clearTimeout(completeTimer);
-    };
-  }, [onComplete, maxDelay]);
-
-  if (phase === 'complete') return null;
+    return () => clearTimeout(timer);
+  }, [totalDuration, onComplete]);
 
   return (
     <div className="fixed inset-0 z-[9999] pointer-events-none overflow-hidden">
       <style>{`
-        @keyframes slideFilmStrip {
-          0% {
-            transform: translateX(100%);
-            filter: blur(0px);
-          }
-          15% {
-            filter: blur(1.5px);
-          }
-          35% {
-            transform: translateX(0%);
-            filter: blur(0px);
-            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.8);
-          }
-          60% {
-            transform: translateX(0%);
-            filter: blur(0px);
-            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.8);
-          }
-          75% {
-            filter: blur(1.5px);
-          }
-          100% {
-            transform: translateX(-100%);
-            filter: blur(0px);
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
-          }
-        }
-
-        @keyframes lightLeakSweep {
-          0%, 30% {
-            opacity: 0;
-          }
-          35%, 60% {
-            opacity: 1;
-          }
-          65%, 100% {
-            opacity: 0;
-          }
-        }
-
-        @keyframes holeGlow {
-          0%, 30% {
-            box-shadow: none;
-          }
-          35%, 60% {
-            box-shadow: 0 0 4px rgba(251, 191, 36, 0.4), 0 0 8px rgba(251, 191, 36, 0.2);
-          }
-          65%, 100% {
-            box-shadow: none;
-          }
-        }
-
-        .film-strip-row {
+        .film-strip {
           position: absolute;
           left: 0;
           right: 0;
           height: calc(100% / 7);
           transform: translateX(100%);
-          animation: slideFilmStrip 2.1s cubic-bezier(0.65, 0, 0.35, 1) forwards;
-          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
-          will-change: transform;
+          animation: slideInOut 2.1s cubic-bezier(0.65, 0, 0.35, 1) forwards;
         }
 
-        .light-leak {
-          animation: lightLeakSweep 2.1s ease-in-out forwards;
-          animation-delay: inherit;
+        /* Position each strip */
+        .film-strip:nth-child(1) { top: 0; }
+        .film-strip:nth-child(2) { top: calc(100% / 7); }
+        .film-strip:nth-child(3) { top: calc(200% / 7); }
+        .film-strip:nth-child(4) { top: calc(300% / 7); }
+        .film-strip:nth-child(5) { top: calc(400% / 7); }
+        .film-strip:nth-child(6) { top: calc(500% / 7); }
+        .film-strip:nth-child(7) { top: calc(600% / 7); }
+
+        /* Slide in and out animation */
+        @keyframes slideInOut {
+          0% { transform: translateX(100%); filter: blur(0px); }
+          15% { filter: blur(1.5px); }
+          35% { transform: translateX(0%); filter: blur(0px); }
+          60% { transform: translateX(0%); }
+          75% { filter: blur(1.5px); }
+          100% { transform: translateX(-100%); filter: blur(0px); }
         }
 
-        .film-hole {
-          animation: holeGlow 2.1s ease-in-out forwards;
-          animation-delay: inherit;
-        }
-
+        /* Film grain */
         .film-grain {
           background-image: 
             repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,.12) 2px, rgba(0,0,0,.12) 4px),
@@ -182,16 +114,8 @@ export default function FilmTransition({ onComplete }) {
         }
 
         @keyframes grainShift {
-          0%, 100% { transform: translate(0, 0); opacity: 0.2; }
-          10% { transform: translate(-1px, 1px); opacity: 0.25; }
-          20% { transform: translate(1px, -1px); opacity: 0.18; }
-          30% { transform: translate(-1px, -1px); opacity: 0.22; }
-          40% { transform: translate(1px, 1px); opacity: 0.2; }
-          50% { transform: translate(-1px, 0); opacity: 0.24; }
-          60% { transform: translate(1px, 0); opacity: 0.19; }
-          70% { transform: translate(0, -1px); opacity: 0.21; }
-          80% { transform: translate(0, 1px); opacity: 0.23; }
-          90% { transform: translate(-1px, 1px); opacity: 0.2; }
+          0%,100% { transform: translate(0,0); opacity:0.2; }
+          50% { transform: translate(-1px,1px); opacity:0.25; }
         }
 
         .film-scratch {
@@ -202,7 +126,6 @@ export default function FilmTransition({ onComplete }) {
           background: linear-gradient(to bottom, 
             transparent 0%, 
             rgba(255, 255, 255, 0.1) 10%,
-            rgba(255, 255, 255, 0.15) 20%,
             transparent 30%,
             rgba(255, 255, 255, 0.1) 50%,
             transparent 70%,
@@ -210,28 +133,13 @@ export default function FilmTransition({ onComplete }) {
             transparent 100%
           );
           opacity: 0.4;
-          animation: scratchFlicker 0.2s steps(2) infinite;
-        }
-
-        @keyframes scratchFlicker {
-          0%, 100% { opacity: 0.3; }
-          50% { opacity: 0.5; }
         }
 
         .vignette {
           background: radial-gradient(ellipse at center, transparent 30%, rgba(0,0,0,0.3) 100%);
-          pointer-events: none;
         }
-
-        .film-strip-row:nth-child(1) { top: 0; }
-        .film-strip-row:nth-child(2) { top: calc(100% / 7); }
-        .film-strip-row:nth-child(3) { top: calc(200% / 7); }
-        .film-strip-row:nth-child(4) { top: calc(300% / 7); }
-        .film-strip-row:nth-child(5) { top: calc(400% / 7); }
-        .film-strip-row:nth-child(6) { top: calc(500% / 7); }
-        .film-strip-row:nth-child(7) { top: calc(600% / 7); }
       `}</style>
-      
+
       {delays.map((delay, i) => (
         <FilmStripRow key={i} delay={delay} index={i} />
       ))}

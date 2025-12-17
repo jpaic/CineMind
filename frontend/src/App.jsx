@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, Navigate, useNavigate } from 'react-router-dom';
 import { authUtils } from './utils/authUtils';
 import AppLayout from './components/AppLayout';
 import Landing from './pages/Landing';
@@ -20,35 +20,53 @@ import UpcomingMovies from './pages/UpcomingMovies';
 import PopularMovies from './pages/PopularMovies';
 import FilmTransition from './components/FilmTransition';
 
-export default function App() {
+function AppContent() {
   const [loggedIn, setLoggedIn] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showTransition, setShowTransition] = useState(false);
+  const navigate = useNavigate();
 
+  // Initialize auth state on mount
   useEffect(() => {
     const isAuth = authUtils.isAuthenticated();
+    console.log('[App] Initializing auth state:', isAuth);
     setLoggedIn(isAuth);
     setLoading(false);
   }, []);
 
-  const handleLogin = () => {
+  // Handle start of transition from Landing page (navigate during peak)
+  const handleStartTransition = () => {
+    console.log('[App] Transition started, will navigate at peak');
     setShowTransition(true);
+    
+    // Navigate at the peak of the transition (~1200ms)
+    setTimeout(() => {
+      console.log('[App] Navigating to /home at transition peak');
+      navigate('/home', { replace: true });
+    }, 1200);
   };
 
+  // Handle transition animation completion
   const handleTransitionComplete = () => {
-    setLoggedIn(true);
+    console.log('[App] Transition animation complete, clearing overlay');
     setShowTransition(false);
   };
 
+  // Handle auth completion (simple - just set state)
+  const handleAuthComplete = () => {
+    console.log('[App] Auth complete, setting loggedIn and navigating');
+    setLoggedIn(true);
+    navigate('/home', { replace: true });
+  };
+
+  // Handle logout
   const handleLogout = () => {
+    console.log('[App] Logout');
     authUtils.clearAuth();
     setLoggedIn(false);
   };
 
-  const handleNavigateToHome = () => {
-    setShowTransition(true);
-  };
-
+  // Show loading spinner while checking auth
   if (loading) {
     return (
       <div className="w-full h-screen flex items-center justify-center bg-gray-900 text-white">
@@ -58,13 +76,27 @@ export default function App() {
   }
 
   return (
-    <Router>
-      {showTransition && <FilmTransition onComplete={handleTransitionComplete} />}
+    <>
+      {/* Film strip transition overlay - only for landing page */}
+      {showTransition && (
+        <FilmTransition onComplete={handleTransitionComplete} />
+      )}
       
       <Routes>
         {/* Public Routes */}
-        <Route path="/" element={<Landing onNavigateToHome={handleNavigateToHome} />} />
-        <Route path="/login" element={<Login onLogin={handleLogin} />} />
+        <Route 
+          path="/" 
+          element={
+            <Landing 
+              onStartTransition={handleStartTransition}
+            />
+          } 
+        />
+        
+        <Route 
+          path="/login" 
+          element={<Login onAuthComplete={handleAuthComplete} />} 
+        />
 
         {/* Protected Routes */}
         <Route
@@ -73,7 +105,7 @@ export default function App() {
             loggedIn ? (
               <Home onLogout={handleLogout} />
             ) : (
-              <Navigate to="/login" replace />
+              <Navigate to="/" replace />
             )
           }
         />
@@ -86,7 +118,7 @@ export default function App() {
                 <Discover />
               </AppLayout>
             ) : (
-              <Navigate to="/login" replace />
+              <Navigate to="/" replace />
             )
           }
         />
@@ -99,7 +131,7 @@ export default function App() {
                 <AddMovies />
               </AppLayout>
             ) : (
-              <Navigate to="/login" replace />
+              <Navigate to="/" replace />
             )
           }
         />
@@ -112,7 +144,7 @@ export default function App() {
                 <MyMovies />
               </AppLayout>
             ) : (
-              <Navigate to="/login" replace />
+              <Navigate to="/" replace />
             )
           }
         />
@@ -125,7 +157,7 @@ export default function App() {
                 <Watchlist />
               </AppLayout>
             ) : (
-              <Navigate to="/login" replace />
+              <Navigate to="/" replace />
             )
           }
         />
@@ -138,7 +170,7 @@ export default function App() {
                 <Profile />
               </AppLayout>
             ) : (
-              <Navigate to="/login" replace />
+              <Navigate to="/" replace />
             )
           }
         />
@@ -151,7 +183,7 @@ export default function App() {
                 <Settings />
               </AppLayout>
             ) : (
-              <Navigate to="/login" replace />
+              <Navigate to="/" replace />
             )
           }
         />
@@ -164,7 +196,7 @@ export default function App() {
                 <Help />
               </AppLayout>
             ) : (
-              <Navigate to="/login" replace />
+              <Navigate to="/" replace />
             )
           }
         />
@@ -177,7 +209,7 @@ export default function App() {
                 <PrivacyPolicy />
               </AppLayout>
             ) : (
-              <Navigate to="/login" replace />
+              <Navigate to="/" replace />
             )
           }
         />
@@ -188,7 +220,7 @@ export default function App() {
             loggedIn ? (
               <MovieDetails onLogout={handleLogout} />
             ) : (
-              <Navigate to="/login" replace />
+              <Navigate to="/" replace />
             )
           }
         />
@@ -199,7 +231,7 @@ export default function App() {
             loggedIn ? (
               <PersonDetails onLogout={handleLogout} />
             ) : (
-              <Navigate to="/login" replace />
+              <Navigate to="/" replace />
             )
           }
         />
@@ -210,7 +242,7 @@ export default function App() {
             loggedIn ? (
               <SearchResults onLogout={handleLogout} />
             ) : (
-              <Navigate to="/login" replace />
+              <Navigate to="/" replace />
             )
           } 
         />
@@ -223,7 +255,7 @@ export default function App() {
                 <UpcomingMovies />
               </AppLayout>
             ) : (
-              <Navigate to="/login" replace />
+              <Navigate to="/" replace />
             )
           }
         />
@@ -236,7 +268,7 @@ export default function App() {
                 <PopularMovies />
               </AppLayout>
             ) : (
-              <Navigate to="/login" replace />
+              <Navigate to="/" replace />
             )
           }
         />
@@ -244,6 +276,14 @@ export default function App() {
         {/* Fallback */}
         <Route path="*" element={<Navigate to={loggedIn ? "/home" : "/"} replace />} />
       </Routes>
+    </>
+  );
+}
+
+export default function App() {
+  return (
+    <Router>
+      <AppContent />
     </Router>
   );
 }

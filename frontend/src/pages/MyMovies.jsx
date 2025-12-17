@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Loader, RefreshCw } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 import Card from '../components/Card';
 import { movieApi } from '../api/movieApi';
 import { tmdbService } from '../api/tmdb';
+import FilmReelLoading from '../components/FilmReelLoading';
 
 export default function MyMovies() {
   const [movies, setMovies] = useState([]);
@@ -14,7 +15,6 @@ export default function MyMovies() {
     try {
       setError(null);
       
-      // Get user's movie library from backend
       const libraryData = await movieApi.getLibrary();
       const userMovies = libraryData.movies || [];
 
@@ -23,14 +23,11 @@ export default function MyMovies() {
         return;
       }
 
-      // Get TMDB details for each movie
       const movieIds = userMovies.map(m => m.movie_id);
       const tmdbDetails = await tmdbService.getMoviesDetails(movieIds);
 
-      // Merge backend data with TMDB data
       const enrichedMovies = userMovies.map(userMovie => {
         const tmdbData = tmdbDetails.find(m => m.id === userMovie.movie_id);
-        
         return {
           id: userMovie.movie_id,
           title: tmdbData?.title || 'Unknown',
@@ -63,68 +60,57 @@ export default function MyMovies() {
     fetchMovies();
   };
 
-  if (loading) {
-    return (
-      <div className="flex flex-col w-full bg-slate-950 text-slate-50 min-h-screen items-center justify-center">
-        <Loader className="w-8 h-8 animate-spin text-purple-500 mb-4" />
-        <p className="text-slate-400">Loading your films...</p>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex flex-col w-full bg-slate-950 text-slate-50 min-h-screen items-center justify-center px-6">
-        <div className="text-center">
-          <p className="text-red-400 mb-4">{error}</p>
-          <button
-            onClick={handleRefresh}
-            className="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded text-sm transition"
-          >
-            Try Again
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="flex flex-col w-full bg-slate-950 text-slate-50 min-h-screen px-6 py-12">
-      <div className="max-w-7xl mx-auto w-full">
-        <div className="flex items-center justify-between mb-2">
-          <h2 className="text-3xl font-bold">My Films</h2>
-          <button
-            onClick={handleRefresh}
-            disabled={refreshing}
-            className="p-2 hover:bg-slate-800 rounded transition disabled:opacity-50"
-            title="Refresh"
-          >
-            <RefreshCw className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} />
-          </button>
-        </div>
-        
-        <p className="text-slate-400 mb-8">
-        {movies.length} {movies.length === 1 ? 'film' : 'films'} watched
-      </p>
+    <div className="flex flex-col w-full bg-slate-950 text-slate-50 min-h-screen px-6 py-12 relative">
+      {/* Loading overlay */}
+      <FilmReelLoading isVisible={loading} message="Loading your library..." />
 
-      {movies.length > 0 ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-          {movies.map((movie, index) => (
-            <Card 
-              key={movie.id} 
-              movie={movie} 
-              showRating={true}
-              index={index}
-            />
-          ))}
-        </div>
-      ) : (
-        <div className="text-center py-20">
-          <p className="text-slate-400 text-lg">No films rated yet</p>
-          <p className="text-slate-500 text-sm mt-2">Start adding movies to see them here</p>
+      {error && !loading && (
+        <div className="flex flex-col w-full items-center justify-center px-6 absolute inset-0 bg-slate-950/95 z-50">
+          <div className="text-center">
+            <p className="text-red-400 mb-4">{error}</p>
+            <button
+              onClick={handleRefresh}
+              className="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded text-sm transition"
+            >
+              Try Again
+            </button>
+          </div>
         </div>
       )}
-      </div>
+
+      {!loading && !error && (
+        <div className="max-w-7xl mx-auto w-full">
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-3xl font-bold">My Films</h2>
+            <button
+              onClick={handleRefresh}
+              disabled={refreshing}
+              className="p-2 hover:bg-slate-800 rounded transition disabled:opacity-50"
+              title="Refresh"
+            >
+              <RefreshCw className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} />
+            </button>
+          </div>
+
+          <p className="text-slate-400 mb-8">
+            {movies.length} {movies.length === 1 ? 'film' : 'films'} watched
+          </p>
+
+          {movies.length > 0 ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+              {movies.map((movie, index) => (
+                <Card key={movie.id} movie={movie} showRating={true} index={index} />
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-20">
+              <p className="text-slate-400 text-lg">No films rated yet</p>
+              <p className="text-slate-500 text-sm mt-2">Start adding movies to see them here</p>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

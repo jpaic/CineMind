@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { authUtils } from "../utils/authUtils";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
+import FilmReelLoading from "../components/FilmReelLoading";
 import { loginUser, registerUser } from "../api/auth";
 
-export default function Login({ onLogin }) {
+export default function Login({ onAuthComplete }) {
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -23,6 +24,8 @@ export default function Login({ onLogin }) {
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showOverlay, setShowOverlay] = useState(false);
+  const authInProgress = useRef(false);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -30,44 +33,66 @@ export default function Login({ onLogin }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    if (authInProgress.current) {
+      console.log('[Login] Submit blocked - auth already in progress');
+      return;
+    }
+    
+    console.log('[Login] Form submitted');
     setError("");
     setLoading(true);
+    setShowOverlay(true);
+    authInProgress.current = true;
 
     try {
       let res;
 
-      // Call the correct API based on signup/login
       if (isSignup) {
         res = await registerUser(form.username, form.email, form.password);
       } else {
         res = await loginUser(form.username, form.password);
       }
 
+      // Minimum 500ms loading time for UX
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
       if (!res.success) {
+        console.log('[Login] Auth failed');
         setError(res.error || "Something went wrong");
         setLoading(false);
+        setShowOverlay(false);
+        authInProgress.current = false;
         return;
       }
 
-      // Set auth with token, username, and rememberMe preference
-      authUtils.setAuth(res.token, form.username, rememberMe);
+      console.log('[Login] Auth successful');
+      authUtils.setAuth(res.token, res.username, isSignup ? true : rememberMe);
 
-      onLogin();
-
-      // Redirect after a short delay
-      setTimeout(() => {
-        navigate("/home");
-      }, 1200);
+      // Call completion callback
+      if (onAuthComplete) {
+        console.log('[Login] Calling onAuthComplete');
+        onAuthComplete();
+      }
+      
     } catch (err) {
       console.error("Login error:", err);
       setError("Server error. Try again.");
       setLoading(false);
+      setShowOverlay(false);
+      authInProgress.current = false;
     }
   };
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-900 text-white">
       <Navbar loggedIn={false} />
+
+      {/* Loading Overlay */}
+      <FilmReelLoading 
+        isVisible={showOverlay} 
+        message={isSignup ? "Creating account..." : "Logging in..."} 
+      />
 
       <main className="flex flex-col items-center justify-center flex-1 px-4 sm:px-6 lg:px-8">
         <div className="w-full max-w-md bg-gray-800 rounded-lg shadow-lg p-6">
@@ -82,7 +107,6 @@ export default function Login({ onLogin }) {
           )}
 
           <form className="flex flex-col space-y-4" onSubmit={handleSubmit}>
-            {/* Username */}
             <div>
               <input
                 type="text"
@@ -92,6 +116,7 @@ export default function Login({ onLogin }) {
                 onChange={handleChange}
                 className="w-full px-4 py-2 rounded-md bg-gray-700 text-white"
                 required
+                disabled={loading}
               />
               {isSignup && (
                 <p className="text-xs text-gray-400 mt-1">
@@ -100,7 +125,6 @@ export default function Login({ onLogin }) {
               )}
             </div>
 
-            {/* Email (signup only) */}
             {isSignup && (
               <input
                 type="email"
@@ -110,10 +134,10 @@ export default function Login({ onLogin }) {
                 onChange={handleChange}
                 className="w-full px-4 py-2 rounded-md bg-gray-700 text-white"
                 required
+                disabled={loading}
               />
             )}
 
-            {/* Password */}
             <div>
               <input
                 type="password"
@@ -123,6 +147,7 @@ export default function Login({ onLogin }) {
                 onChange={handleChange}
                 className="w-full px-4 py-2 rounded-md bg-gray-700 text-white"
                 required
+                disabled={loading}
               />
               {isSignup && (
                 <div className="text-xs text-gray-400 mt-1 space-y-1">
@@ -137,7 +162,6 @@ export default function Login({ onLogin }) {
               )}
             </div>
 
-            {/* Remember me (login only) */}
             {!isSignup && (
               <div className="flex items-center">
                 <input
@@ -146,6 +170,7 @@ export default function Login({ onLogin }) {
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
                   className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2 cursor-pointer"
+                  disabled={loading}
                 />
                 <label
                   htmlFor="rememberMe"
@@ -156,7 +181,6 @@ export default function Login({ onLogin }) {
               </div>
             )}
 
-            {/* Submit button */}
             <button
               type="submit"
               disabled={loading}
@@ -166,7 +190,6 @@ export default function Login({ onLogin }) {
             </button>
           </form>
 
-          {/* Switch Login/Signup */}
           <p className="text-sm text-gray-400 mt-4 text-center">
             {isSignup ? "Already have an account?" : "Don't have an account?"}{" "}
             <span
@@ -179,7 +202,6 @@ export default function Login({ onLogin }) {
             </span>
           </p>
 
-          {/* Signup disclaimer */}
           {isSignup && (
             <p className="text-xs text-gray-500 mt-4 text-center">
               By signing up, you agree this is a demo project for portfolio purposes.

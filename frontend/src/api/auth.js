@@ -11,15 +11,14 @@ export async function registerUser(username, email, password) {
       body: JSON.stringify({ username, email, password }),
     });
 
-    const data = await res.json();
-
     if (!res.ok) {
       const errorData = await res.json();
       return { success: false, error: errorData.error || `HTTP error! status: ${res.status}` };
     }
 
-    if (data.token) authUtils.setAuth(data.token, data.user.username);
-    return data;
+    const data = await res.json();
+    
+    return { success: true, token: data.token, username: data.user.username };
   } catch (error) {
     console.error("Register API call failed:", error);
     return { success: false, error: error.message || "Network error" };
@@ -34,15 +33,14 @@ export async function loginUser(username, password) {
       body: JSON.stringify({ username, password }),
     });
 
-    const data = await res.json();
-
     if (!res.ok) {
       const errorData = await res.json();
       return { success: false, error: errorData.error || `HTTP error! status: ${res.status}` };
     }
 
-    if (data.token) authUtils.setAuth(data.token, data.user.username);
-    return data;
+    const data = await res.json();
+    
+    return { success: true, token: data.token, username: data.user.username };
   } catch (error) {
     console.error("Login API call failed:", error);
     return { success: false, error: error.message || "Network error" };

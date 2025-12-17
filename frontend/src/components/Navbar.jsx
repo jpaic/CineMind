@@ -2,9 +2,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Search, X } from 'lucide-react';
 import { FiSettings } from 'react-icons/fi';
+import { authUtils } from '../utils/authUtils';
 import logo from '../assets/logo.png';
 
-export default function Navbar({ loggedIn, onLogout }) {
+export default function Navbar({ loggedIn, onLogout, onStartTransition, onNavigateToHome }) {
   const navigate = useNavigate();
   const location = useLocation();
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -45,12 +46,32 @@ export default function Navbar({ loggedIn, onLogout }) {
   };
 
   const handleLoginClick = () => {
-    navigate('/login');
+    if (authUtils.isAuthenticated()) {
+      // Has cookies - show transition before going to home
+      console.log('[Navbar] Login button clicked with cookies, starting transition');
+      if (onStartTransition) {
+        onStartTransition();
+      }
+    } else {
+      // Not authenticated - go to login
+      console.log('[Navbar] Login button clicked, no cookies, going to login');
+      navigate('/login');
+    }
     setMobileMenuOpen(false);
   };
 
   const handleSignupClick = () => {
-    navigate('/login?signup=true');
+    if (authUtils.isAuthenticated()) {
+      // Has cookies - show transition before going to home
+      console.log('[Navbar] Signup button clicked with cookies, starting transition');
+      if (onStartTransition) {
+        onStartTransition();
+      }
+    } else {
+      // Not authenticated - go to signup
+      console.log('[Navbar] Signup button clicked, no cookies, going to signup');
+      navigate('/login?signup=true');
+    }
     setMobileMenuOpen(false);
   };
 
@@ -92,11 +113,7 @@ export default function Navbar({ loggedIn, onLogout }) {
           <div
             className="flex items-center cursor-pointer"
             onClick={() => {
-              if (loggedIn) {
-                navigate('/home');
-              } else {
-                navigate('/');
-              }
+              navigate('/home');
             }}
           >
             <img src={logo} alt="Logo" className="w-10 h-10 mr-3" />
