@@ -17,7 +17,10 @@ export async function loginService(username, password) {
   const valid = await verifyPassword(password, user.password_hash);
   if (!valid) throw new Error("Invalid password");
 
-  const token = generateToken({ id: user.id });
+  const token = generateToken({ 
+    id: user.id,
+    username: user.username 
+  });
 
   return { token, user };
 }

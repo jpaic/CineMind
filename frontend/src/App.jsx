@@ -26,12 +26,36 @@ function AppContent() {
   const [showTransition, setShowTransition] = useState(false);
   const navigate = useNavigate();
 
-  // Initialize auth state on mount
+  // Initialize auth state on mount - verify token with backend
   useEffect(() => {
-    const isAuth = authUtils.isAuthenticated();
-    console.log('[App] Initializing auth state:', isAuth);
-    setLoggedIn(isAuth);
-    setLoading(false);
+    const initAuth = async () => {
+      console.log('[App] Checking authentication...');
+      
+      // First check if token exists
+      const hasToken = authUtils.isAuthenticated();
+      
+      if (!hasToken) {
+        console.log('[App] No token found');
+        setLoggedIn(false);
+        setLoading(false);
+        return;
+      }
+
+      // Token exists, verify it's valid with backend
+      console.log('[App] Token found, verifying with backend...');
+      const isValid = await authUtils.verifyToken();
+      
+      console.log('[App] Token verification result:', isValid);
+      setLoggedIn(isValid);
+      setLoading(false);
+
+      // If token was invalid and we're on a protected route, it will redirect
+      if (!isValid) {
+        console.log('[App] Token invalid - user will be redirected to landing');
+      }
+    };
+
+    initAuth();
   }, []);
 
   // Handle start of transition from Landing page (navigate during peak)

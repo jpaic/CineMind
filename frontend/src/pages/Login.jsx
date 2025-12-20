@@ -55,7 +55,7 @@ export default function Login({ onAuthComplete }) {
       }
 
       // Minimum 500ms loading time for UX
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 600));
 
       if (!res.success) {
         console.log('[Login] Auth failed');
