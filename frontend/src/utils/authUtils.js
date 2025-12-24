@@ -19,25 +19,20 @@ export const authUtils = {
 
       sessionStorage.removeItem("token");
       sessionStorage.removeItem("username");
-      localStorage.removeItem("token");
-      localStorage.removeItem("username");
     } else {
       // Only use sessionStorage
       sessionStorage.setItem("token", token);
       if (username) sessionStorage.setItem("username", username);
 
-      // Remove cookies and localStorage to avoid persistence
+      // Remove cookies to avoid persistence
       Cookies.remove(TOKEN_KEY);
       Cookies.remove(USERNAME_KEY);
-      localStorage.removeItem(TOKEN_KEY);
-      localStorage.removeItem(USERNAME_KEY);
     }
   },
 
   /** Get the JWT token from storage */
   getToken() {
     return (
-      localStorage.getItem(TOKEN_KEY) ||
       Cookies.get(TOKEN_KEY) ||
       sessionStorage.getItem("token")
     );
@@ -46,7 +41,6 @@ export const authUtils = {
   /** Get the username from storage */
   getUsername() {
     return (
-      localStorage.getItem(USERNAME_KEY) ||
       Cookies.get(USERNAME_KEY) ||
       sessionStorage.getItem("username") ||
       "Guest"
@@ -95,13 +89,17 @@ export const authUtils = {
     }
   },
 
-  /** Clear all auth data */
   clearAuth() {
+    // Remove from all storage locations synchronously
     Cookies.remove(TOKEN_KEY);
     Cookies.remove(USERNAME_KEY);
     sessionStorage.removeItem("token");
     sessionStorage.removeItem("username");
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(USERNAME_KEY);
+    
+    // Double-check: force removal with path variations (some cookies might have paths)
+    Cookies.remove(TOKEN_KEY, { path: '/' });
+    Cookies.remove(USERNAME_KEY, { path: '/' });
+    
+    console.log('[authUtils] Auth cleared. Token check:', this.getToken());
   },
 };

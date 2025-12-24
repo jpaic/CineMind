@@ -39,37 +39,61 @@ export default function Navbar({ loggedIn, onLogout, onStartTransition, onNaviga
   };
 
   const handleLogout = () => {
-    if (onLogout) onLogout();
-    navigate('/', { replace: true });
+    console.log('[Navbar] Logout initiated');
+    
+    // Close menus immediately
     setDropdownOpen(false);
     setMobileMenuOpen(false);
+    
+    // CRITICAL: Clear auth FIRST, before any other operations
+    authUtils.clearAuth();
+    console.log('[Navbar] Auth cleared, token now:', authUtils.getToken());
+    
+    // Call parent's logout handler to update state
+    if (onLogout) {
+      onLogout();
+    }
+    
+    // Small delay to ensure state updates propagate
+    setTimeout(() => {
+      console.log('[Navbar] Navigating to landing after logout');
+      navigate('/', { replace: true });
+    }, 50);
   };
 
   const handleLoginClick = () => {
-    if (authUtils.isAuthenticated()) {
-      // Has cookies - show transition before going to home
-      console.log('[Navbar] Login button clicked with cookies, starting transition');
+    // Re-check authentication status at click time to avoid stale checks
+    const isAuth = authUtils.isAuthenticated();
+    console.log('[Navbar] Login clicked, authenticated:', isAuth);
+    
+    if (isAuth) {
+      // Has valid auth - show transition before going to home
+      console.log('[Navbar] Login button clicked with auth, starting transition');
       if (onStartTransition) {
         onStartTransition();
       }
     } else {
       // Not authenticated - go to login
-      console.log('[Navbar] Login button clicked, no cookies, going to login');
+      console.log('[Navbar] Login button clicked, no auth, going to login');
       navigate('/login');
     }
     setMobileMenuOpen(false);
   };
 
   const handleSignupClick = () => {
-    if (authUtils.isAuthenticated()) {
-      // Has cookies - show transition before going to home
-      console.log('[Navbar] Signup button clicked with cookies, starting transition');
+    // Re-check authentication status at click time to avoid stale checks
+    const isAuth = authUtils.isAuthenticated();
+    console.log('[Navbar] Signup clicked, authenticated:', isAuth);
+    
+    if (isAuth) {
+      // Has valid auth - show transition before going to home
+      console.log('[Navbar] Signup button clicked with auth, starting transition');
       if (onStartTransition) {
         onStartTransition();
       }
     } else {
       // Not authenticated - go to signup
-      console.log('[Navbar] Signup button clicked, no cookies, going to signup');
+      console.log('[Navbar] Signup button clicked, no auth, going to signup');
       navigate('/login?signup=true');
     }
     setMobileMenuOpen(false);
