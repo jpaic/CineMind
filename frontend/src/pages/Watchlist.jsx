@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { RefreshCw } from 'lucide-react';
 import Card from '../components/Card';
+import FilterBar from '../components/FilterBar';
 import { movieApi } from '../api/movieApi';
 import { tmdbService } from '../api/tmdb';
 import FilmReelLoading from '../components/FilmReelLoading';
 
 export default function Watchlist() {
   const [movies, setMovies] = useState([]);
+  const [filteredMovies, setFilteredMovies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -20,6 +22,7 @@ export default function Watchlist() {
 
       if (watchlistItems.length === 0) {
         setMovies([]);
+        setFilteredMovies([]);
         return;
       }
 
@@ -70,6 +73,7 @@ export default function Watchlist() {
       });
 
       setMovies(enrichedMovies);
+      setFilteredMovies(enrichedMovies);
     } catch (err) {
       console.error('Failed to fetch watchlist:', err);
       setError(err.message || 'Failed to load watchlist');
@@ -86,6 +90,40 @@ export default function Watchlist() {
   const handleRefresh = () => {
     setRefreshing(true);
     fetchWatchlist();
+  };
+
+  const handleFilterChange = (filters) => {
+    let filtered = [...movies];
+
+    // Filter by decade
+    if (filters.decade && filters.decade !== 'all') {
+      const decadeStart = parseInt(filters.decade);
+      const decadeEnd = decadeStart + 9;
+      filtered = filtered.filter(m => m.year >= decadeStart && m.year <= decadeEnd);
+    }
+
+    // Filter by genre
+    if (filters.genre && filters.genre !== 'all') {
+      filtered = filtered.filter(m => 
+        m.genres && m.genres.some(g => g.toLowerCase() === filters.genre.toLowerCase())
+      );
+    }
+
+    // Sort
+    if (filters.sortBy === 'year-desc') {
+      filtered.sort((a, b) => (b.year || 0) - (a.year || 0));
+    } else if (filters.sortBy === 'year-asc') {
+      filtered.sort((a, b) => (a.year || 0) - (b.year || 0));
+    } else if (filters.sortBy === 'title-asc') {
+      filtered.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+    } else if (filters.sortBy === 'title-desc') {
+      filtered.sort((a, b) => (b.title || '').localeCompare(a.title || ''));
+    } else if (filters.sortBy === 'rating-desc' || filters.sortBy === 'rating-asc') {
+      // Watchlist doesn't have ratings, so just sort by year as fallback
+      filtered.sort((a, b) => (b.year || 0) - (a.year || 0));
+    }
+
+    setFilteredMovies(filtered);
   };
 
   if (loading) {
@@ -138,13 +176,21 @@ export default function Watchlist() {
           </button>
         </div>
 
-        <p className="text-slate-400 mb-8">
+        <p className="text-slate-400 mb-6">
           {movies.length} {movies.length === 1 ? 'film' : 'films'} watchlisted
         </p>
 
-        {movies.length > 0 ? (
+        {movies.length > 0 && (
+          <FilterBar 
+            movies={movies} 
+            onFilterChange={handleFilterChange}
+            showRatingFilter={false}
+          />
+        )}
+
+        {filteredMovies.length > 0 ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-            {movies.map((movie, index) => (
+            {filteredMovies.map((movie, index) => (
               <Card 
                 key={movie.id} 
                 movie={movie} 
@@ -152,6 +198,11 @@ export default function Watchlist() {
                 index={index}
               />
             ))}
+          </div>
+        ) : movies.length > 0 ? (
+          <div className="text-center py-20">
+            <p className="text-slate-400 text-lg">No films match your filters</p>
+            <p className="text-slate-500 text-sm mt-2">Try adjusting your filter criteria</p>
           </div>
         ) : (
           <div className="text-center py-20">
