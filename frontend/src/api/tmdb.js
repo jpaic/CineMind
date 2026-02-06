@@ -48,108 +48,64 @@ export const tmdbService = {
   getUpcoming: async () => {
     // Check cache first
     if (isCacheValid(cache.upcoming)) {
-      console.log('Using cached upcoming movies');
       return cache.upcoming.data;
     }
 
     try {
-      console.log('Fetching upcoming movies from TMDB...');
-      
-      // Fetch first page only with US region
-      const response = await fetch(
-        `${TMDB_BASE_URL}/movie/upcoming?api_key=${API_KEY}&language=en-US&page=1&region=US`
-      );
-      
-      if (!response.ok) {
-        throw new Error(`TMDB API error: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      const allResults = data.results;
-      
-      // Filter for movies releasing within next 3 months (exclude animation)
       const now = new Date();
       const threeMonthsFromNow = new Date();
       threeMonthsFromNow.setMonth(threeMonthsFromNow.getMonth() + 3);
-      
-      const upcomingFiltered = allResults.filter(movie => {
+
+      const startDate = now.toISOString().split('T')[0];
+      const endDate = threeMonthsFromNow.toISOString().split('T')[0];
+
+      const response = await fetch(
+        `${TMDB_BASE_URL}/discover/movie?api_key=${API_KEY}&language=en-US&region=US&with_original_language=en&sort_by=popularity.desc&primary_release_date.gte=${startDate}&primary_release_date.lte=${endDate}&with_release_type=3|2&include_adult=false&without_genres=16&page=1`
+      );
+
+      if (!response.ok) {
+        throw new Error(`TMDB API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const upcomingFiltered = (data.results || []).filter(movie => {
         if (!movie.release_date) return false;
         const releaseDate = new Date(movie.release_date);
-        const isAnimated = movie.genre_ids && movie.genre_ids.includes(16); // 16 is Animation genre
-        return releaseDate > now && releaseDate < threeMonthsFromNow && !isAnimated;
+        return releaseDate >= now && releaseDate <= threeMonthsFromNow;
       });
 
-      // Get cast info AND US release dates for filtered movies
       const moviesWithCastData = await Promise.allSettled(
-        upcomingFiltered.slice(0, 25).map(async (movie) => {
+        upcomingFiltered.slice(0, 20).map(async (movie) => {
           try {
-            const [creditsRes, releaseDatesRes] = await Promise.all([
-              fetch(`${TMDB_BASE_URL}/movie/${movie.id}/credits?api_key=${API_KEY}`),
-              fetch(`${TMDB_BASE_URL}/movie/${movie.id}/release_dates?api_key=${API_KEY}`)
-            ]);
-            
+            const creditsRes = await fetch(
+              `${TMDB_BASE_URL}/movie/${movie.id}/credits?api_key=${API_KEY}`
+            );
+
             let cast = [];
             let director = 'TBA';
             let directorId = null;
             let castPopularity = 0;
-            
+
             if (creditsRes.ok) {
               const credits = await creditsRes.json();
               cast = credits.cast || [];
               const directorObj = credits.crew?.find(person => person.job === 'Director');
               director = directorObj?.name || 'TBA';
               directorId = directorObj?.id || null;
-              
-              // Calculate total cast popularity (sum of top 3 cast members)
+
               castPopularity = cast
                 .slice(0, 3)
                 .reduce((sum, actor) => sum + (actor.popularity || 0), 0);
             }
-            
-            // Get US theatrical release date
-            let usReleaseDate = movie.release_date;
-            if (releaseDatesRes.ok) {
-              const releaseDates = await releaseDatesRes.json();
-              const usRelease = releaseDates.results?.find(r => r.iso_3166_1 === 'US');
-              
-              if (usRelease && usRelease.release_dates && usRelease.release_dates.length > 0) {
-                const allReleases = usRelease.release_dates;
-                
-                // Get earliest type 3 (wide theatrical) date
-                const theatrical = allReleases
-                  .filter(d => d.type === 3)
-                  .sort((a, b) => new Date(a.release_date) - new Date(b.release_date));
-                
-                if (theatrical.length > 0) {
-                  usReleaseDate = theatrical[0].release_date.split('T')[0];
-                } else {
-                  // Fallback to limited or premiere
-                  const limited = allReleases.filter(d => d.type === 2)
-                    .sort((a, b) => new Date(a.release_date) - new Date(b.release_date));
-                  const premiere = allReleases.filter(d => d.type === 1)
-                    .sort((a, b) => new Date(a.release_date) - new Date(b.release_date));
-                  
-                  if (limited.length > 0) {
-                    usReleaseDate = limited[0].release_date.split('T')[0];
-                  } else if (premiere.length > 0) {
-                    usReleaseDate = premiere[0].release_date.split('T')[0];
-                  }
-                }
-              }
-            }
-            
+
             return {
-              movie: {
-                ...movie,
-                release_date: usReleaseDate
-              },
+              movie,
               cast,
               director,
               directorId,
               castPopularity
             };
           } catch (err) {
-            console.warn(`Failed to fetch data for ${movie.title}`);
             return { movie, cast: [], director: 'TBA', directorId: null, castPopularity: 0 };
           }
         })
@@ -159,25 +115,21 @@ export const tmdbService = {
         .filter(result => result.status === 'fulfilled')
         .map(result => result.value);
 
-      // Composite scoring: base popularity + cast popularity + English language boost
       const moviesWithScores = allMoviesData.map(data => {
         const baseScore = (data.movie.popularity || 0) * 0.6 + (data.castPopularity || 0) * 0.4;
-        const languageMultiplier = data.movie.original_language === 'en' ? 1.9 : 1.0;
-        const compositeScore = baseScore * languageMultiplier;
-        
+        const compositeScore = baseScore * 1.9;
+
         return {
           ...data,
           compositeScore,
           baseScore
         };
       });
-      
-      // Sort by composite score and take top 10 for full page
+
       const selectedMovies = moviesWithScores
         .sort((a, b) => b.compositeScore - a.compositeScore)
         .slice(0, 10);
-      
-      // Transform to final format
+
       const finalMovies = selectedMovies.map(data => ({
         id: data.movie.id,
         title: data.movie.title,
@@ -191,7 +143,6 @@ export const tmdbService = {
         popularity: data.movie.popularity
       }));
 
-      // Store in cache
       cache.upcoming = {
         data: finalMovies,
         timestamp: Date.now()
@@ -199,14 +150,10 @@ export const tmdbService = {
 
       return finalMovies;
     } catch (error) {
-      console.error('Failed to fetch upcoming movies:', error);
-      
-      // If we have stale cache data, return it as fallback
       if (cache.upcoming.data) {
-        console.log('Using stale cache as fallback');
         return cache.upcoming.data;
       }
-      
+
       return [];
     }
   },
@@ -221,12 +168,10 @@ export const tmdbService = {
   getPopular: async () => {
     // Check cache first
     if (isCacheValid(cache.popular)) {
-      console.log('Using cached popular movies');
       return cache.popular.data;
     }
 
     try {
-      console.log('Fetching popular movies from TMDB...');
       
       // Calculate date range: 3 months ago from 1st to yesterday
       const fourMonthsAgo = new Date();
@@ -239,7 +184,6 @@ export const tmdbService = {
       const startDate = fourMonthsAgo.toISOString().split('T')[0];
       const endDate = yesterday.toISOString().split('T')[0];
       
-      console.log(`Fetching movies from ${startDate} to ${endDate}`);
       
       // Use discover API with date filters and quality thresholds (exclude animation)
       // SORT BY VOTE_AVERAGE (user rating/score) instead of popularity
@@ -253,7 +197,6 @@ export const tmdbService = {
       
       const data = await response.json();
       
-      console.log(`Found ${data.results.length} popular movies, already sorted by vote_average`);
       
       // Take top 10 by vote_average (user score) - already sorted by API
       const popularFiltered = data.results.slice(0, 10);
@@ -278,7 +221,7 @@ export const tmdbService = {
               }
             }
           } catch (err) {
-            console.warn(`Failed to fetch director for ${movie.title}`);
+            // Ignore credit fetch failures and fall back to defaults.
           }
           
           return {
@@ -301,11 +244,6 @@ export const tmdbService = {
         .filter(result => result.status === 'fulfilled')
         .map(result => result.value);
 
-      console.log('Popular movies sorted by user rating:', successfulMovies.map(m => ({
-        title: m.title,
-        rating: m.rating
-      })));
-
       // Store in cache (already sorted by rating from API)
       cache.popular = {
         data: successfulMovies,
@@ -314,10 +252,8 @@ export const tmdbService = {
 
       return successfulMovies;
     } catch (error) {
-      console.error('Failed to fetch popular movies:', error);
       
       if (cache.popular.data) {
-        console.log('Using stale cache as fallback');
         return cache.popular.data;
       }
       
@@ -335,14 +271,12 @@ export const tmdbService = {
   getTrendingPeople: async () => {
     // Check cache first
     if (isCacheValid(cache.trending)) {
-      console.log('Using cached trending people');
       return cache.trending.data;
     }
 
     try {
-      console.log('Fetching trending people from TMDB...');
       const res = await fetch(
-        `${TMDB_BASE_URL}/trending/person/week?api_key=${API_KEY}`
+        `${TMDB_BASE_URL}/person/popular?api_key=${API_KEY}&language=en-US&page=1`
       );
 
       if (!res.ok) {
@@ -350,91 +284,57 @@ export const tmdbService = {
       }
 
       const data = await res.json();
-      
-      // Get detailed credits for each person
+
+      const filteredPeople = (data.results || [])
+        .filter(person => person.profile_path)
+        .filter(person => ['Acting', 'Directing'].includes(person.known_for_department))
+        .filter(person => {
+          const knownFor = person.known_for || [];
+          return knownFor.some(item => item.media_type === 'movie' && !item.adult && item.original_language === 'en');
+        });
+
       const peopleWithCredits = await Promise.allSettled(
-        data.results
-          .filter(person => person.profile_path)
-          .slice(0, 8) // Get 8 to have extras in case some fail
-          .map(async (person) => {
-            try {
-              // Fetch their movie credits
-              const creditsRes = await fetch(
-                `${TMDB_BASE_URL}/person/${person.id}/movie_credits?api_key=${API_KEY}`
-              );
-              
-              if (!creditsRes.ok) {
-                throw new Error(`Failed to fetch credits for ${person.name}`);
-              }
-              
-              const credits = await creditsRes.json();
-              const castMovies = credits.cast || [];
-              
-              if (castMovies.length === 0) {
-                return null;
-              }
-              
-              // Sort by popularity to get top movies
-              const sortedByPopularity = [...castMovies]
-                .filter(movie => movie.title && movie.popularity)
-                .sort((a, b) => b.popularity - a.popularity);
-              
-              // Sort by release date to get most recent
-              const sortedByDate = [...castMovies]
-                .filter(movie => movie.title && movie.release_date)
-                .sort((a, b) => new Date(b.release_date) - new Date(a.release_date));
-              
-              // Get top 5 popular movies, then pick 2 randomly for variety
-              const topPopular = sortedByPopularity.slice(0, 5);
-              const selectedPopular = [];
-              
-              if (topPopular.length > 0) {
-                // First popular movie
-                selectedPopular.push(topPopular[0]);
-                
-                // Second popular movie (random from top 2-5)
-                if (topPopular.length > 1) {
-                  const randomIndex = Math.floor(Math.random() * Math.min(4, topPopular.length - 1)) + 1;
-                  selectedPopular.push(topPopular[randomIndex]);
-                }
-              }
-              
-              // Get most recent movie
-              const recentMovie = sortedByDate[0];
-              
-              // Combine: 2 popular + 1 recent (if recent isn't already in popular)
-              const notableMovies = [...selectedPopular];
-              if (recentMovie && !selectedPopular.find(m => m.id === recentMovie.id)) {
-                notableMovies.push(recentMovie);
-              }
-              
-              // Format notable works
-              const notableWorks = notableMovies
-                .slice(0, 2) // Show max 2 titles
-                .map(movie => movie.title)
-                .join(', ');
-              
-              return {
-                id: person.id,
-                name: person.name,
-                role: person.known_for_department === 'Acting' ? 'Actor' : 'Director',
-                notableWork: notableWorks || 'Various works',
-                poster: `${TMDB_IMAGE_BASE}/w500${person.profile_path}`
-              };
-            } catch (err) {
-              console.warn(`Failed to fetch credits for ${person.name}:`, err);
+        filteredPeople.slice(0, 10).map(async (person) => {
+          try {
+            const creditsRes = await fetch(
+              `${TMDB_BASE_URL}/person/${person.id}/movie_credits?api_key=${API_KEY}`
+            );
+
+            if (!creditsRes.ok) {
+              throw new Error(`Failed to fetch credits for ${person.name}`);
+            }
+
+            const credits = await creditsRes.json();
+            const castMovies = credits.cast || [];
+
+            const englishMovies = castMovies.filter(
+              movie => movie.title && movie.original_language === 'en' && !movie.adult
+            );
+
+            if (englishMovies.length === 0) {
               return null;
             }
-          })
+
+            const notableWorks = getNotableWorks(englishMovies);
+
+            return {
+              id: person.id,
+              name: person.name,
+              role: person.known_for_department === 'Acting' ? 'Actor' : 'Director',
+              notableWork: notableWorks || 'Various works',
+              poster: `${TMDB_IMAGE_BASE}/w500${person.profile_path}`
+            };
+          } catch (err) {
+            return null;
+          }
+        })
       );
-      
-      // Extract successful results only
+
       const transformedData = peopleWithCredits
         .filter(result => result.status === 'fulfilled' && result.value !== null)
         .map(result => result.value)
         .slice(0, 5);
 
-      // Store in cache
       cache.trending = {
         data: transformedData,
         timestamp: Date.now()
@@ -442,14 +342,10 @@ export const tmdbService = {
 
       return transformedData;
     } catch (error) {
-      console.error('Failed to fetch trending people:', error);
-      
-      // If we have stale cache data, return it as fallback
       if (cache.trending.data) {
-        console.log('Using stale cache as fallback');
         return cache.trending.data;
       }
-      
+
       return [];
     }
   },
@@ -465,7 +361,6 @@ export const tmdbService = {
     cache.upcoming = { data: null, timestamp: null };
     cache.trending = { data: null, timestamp: null };
     cache.popular = { data: null, timestamp: null };
-    console.log('Cache cleared');
   },
 
   // Helper: Get cache status (for debugging)
@@ -515,7 +410,6 @@ export const tmdbService = {
           overview: movie.overview,
         }));
       } catch (error) {
-        console.error('Movie search failed:', error);
         return [];
       }
     },
@@ -550,7 +444,6 @@ export const tmdbService = {
           releaseDate: movie.release_date,
         };
       } catch (error) {
-        console.error('Failed to fetch movie details:', error);
         return null;
       }
     },
@@ -565,7 +458,6 @@ export const tmdbService = {
           .filter(result => result.status === 'fulfilled' && result.value !== null)
           .map(result => result.value);
       } catch (error) {
-        console.error('Failed to fetch movies details:', error);
         return [];
       }
     },

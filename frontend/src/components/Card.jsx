@@ -24,7 +24,7 @@ export default function Card({ movie, onClick, showRating = false, index = 0, is
       const result = await movieApi.checkWatchlist(movie.id);
       setInWatchlist(result.inWatchlist);
     } catch (err) {
-      console.error('Failed to check watchlist status:', err);
+      setInWatchlist(false);
     }
   };
 
@@ -118,7 +118,6 @@ export default function Card({ movie, onClick, showRating = false, index = 0, is
         }
       }
     } catch (err) {
-      console.error('Failed to toggle watchlist:', err);
       alert('Failed to update watchlist. Please try again.');
     } finally {
       setIsTogglingWatchlist(false);

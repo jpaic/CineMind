@@ -22,7 +22,6 @@ export default function Discover() {
       setMovies([]);
       setFilteredMovies([]);
     } catch (err) {
-      console.error('Failed to fetch recommendations:', err);
       setError(err.message || 'Failed to load recommendations');
     } finally {
       setLoading(false);

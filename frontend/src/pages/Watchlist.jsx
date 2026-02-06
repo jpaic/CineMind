@@ -44,13 +44,11 @@ export default function Watchlist() {
         // Batch cache all newly fetched movies (fire and forget)
         const cachePromises = tmdbDetails.map(movie => 
           movieApi.cacheMovie(movie).catch(err => {
-            console.warn(`Failed to cache movie ${movie.id}:`, err);
           })
         );
         
         // Don't block on caching
         Promise.all(cachePromises).catch(err => {
-          console.warn('Some movies failed to cache:', err);
         });
       }
 
@@ -75,7 +73,6 @@ export default function Watchlist() {
       setMovies(enrichedMovies);
       setFilteredMovies(enrichedMovies);
     } catch (err) {
-      console.error('Failed to fetch watchlist:', err);
       setError(err.message || 'Failed to load watchlist');
     } finally {
       setLoading(false);

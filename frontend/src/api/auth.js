@@ -1,7 +1,6 @@
 import { authUtils } from "../utils/authUtils";
 
 const API_URL = import.meta.env.VITE_API_URL;
-console.log("API_URL:", API_URL);
 
 export async function registerUser(username, email, password) {
   try {
@@ -20,7 +19,6 @@ export async function registerUser(username, email, password) {
     
     return { success: true, token: data.token, username: data.user.username };
   } catch (error) {
-    console.error("Register API call failed:", error);
     return { success: false, error: error.message || "Network error" };
   }
 }
@@ -42,7 +40,6 @@ export async function loginUser(username, password) {
     
     return { success: true, token: data.token, username: data.user.username };
   } catch (error) {
-    console.error("Login API call failed:", error);
     return { success: false, error: error.message || "Network error" };
   }
 }

@@ -71,7 +71,6 @@ export default function Home({ onLogout }) {
         setLoading(true);
         setError(null);
         
-        console.log('Starting to fetch home data...');
         
         const [moviesData, popularData, peopleData] = await Promise.allSettled([
           tmdbService.getUpcomingShowcase(),
@@ -79,22 +78,14 @@ export default function Home({ onLogout }) {
           tmdbService.getTrendingPeople()
         ]);
         
-        console.log('Movies result:', moviesData);
-        console.log('Popular result:', popularData);
-        console.log('People result:', peopleData);
         
         // Handle upcoming movies
         if (moviesData.status === 'fulfilled') {
           setUpcomingMovies(moviesData.value || []);
           
-          try {
-            const brief = await weeklyBriefService.generateBrief(moviesData.value || []);
-            setWeeklyBrief(brief);
-          } catch (err) {
-            console.error('Failed to generate weekly brief:', err);
-          }
+          const brief = await weeklyBriefService.generateBrief(moviesData.value || []);
+          setWeeklyBrief(brief);
         } else {
-          console.error('Movies fetch failed:', moviesData.reason);
           setUpcomingMovies([]);
         }
         
@@ -102,7 +93,6 @@ export default function Home({ onLogout }) {
         if (popularData.status === 'fulfilled') {
           setPopularMovies(popularData.value || []);
         } else {
-          console.error('Popular fetch failed:', popularData.reason);
           setPopularMovies([]);
         }
         
@@ -110,18 +100,15 @@ export default function Home({ onLogout }) {
         if (peopleData.status === 'fulfilled') {
           setFeaturedPeople(peopleData.value || []);
         } else {
-          console.error('People fetch failed:', peopleData.reason);
           setFeaturedPeople([]);
         }
       } catch (err) {
-        console.error('Failed to fetch home data:', err);
         setError('Failed to load content. Please refresh the page.');
         setUpcomingMovies([]);
         setPopularMovies([]);
         setFeaturedPeople([]);
       } finally {
         setLoading(false);
-        console.log('Finished loading home data');
       }
     };
 

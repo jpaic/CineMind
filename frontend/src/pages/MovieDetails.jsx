@@ -38,7 +38,6 @@ export default function MovieDetails() {
         setMovie(movieData);
         setCredits(creditsData);
       } catch (err) {
-        console.error('Error fetching movie details:', err);
         setError('Failed to load movie details');
       } finally {
         setLoading(false);

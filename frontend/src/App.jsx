@@ -29,30 +29,23 @@ function AppContent() {
   // Initialize auth state on mount - verify token with backend
   useEffect(() => {
     const initAuth = async () => {
-      console.log('[App] Checking authentication...');
       
       // First check if token exists
       const hasToken = authUtils.isAuthenticated();
       
       if (!hasToken) {
-        console.log('[App] No token found');
         setLoggedIn(false);
         setLoading(false);
         return;
       }
 
       // Token exists, verify it's valid with backend
-      console.log('[App] Token found, verifying with backend...');
       const isValid = await authUtils.verifyToken();
       
-      console.log('[App] Token verification result:', isValid);
       setLoggedIn(isValid);
       setLoading(false);
 
       // If token was invalid and we're on a protected route, it will redirect
-      if (!isValid) {
-        console.log('[App] Token invalid - user will be redirected to landing');
-      }
     };
 
     initAuth();
@@ -60,32 +53,27 @@ function AppContent() {
 
   // Handle start of transition from Landing page (navigate during peak)
   const handleStartTransition = () => {
-    console.log('[App] Transition started, will navigate at peak');
     setShowTransition(true);
     
     // Navigate at the peak of the transition (~1200ms)
     setTimeout(() => {
-      console.log('[App] Navigating to /home at transition peak');
       navigate('/home', { replace: true });
     }, 1200);
   };
 
   // Handle transition animation completion
   const handleTransitionComplete = () => {
-    console.log('[App] Transition animation complete, clearing overlay');
     setShowTransition(false);
   };
 
   // Handle auth completion (simple - just set state)
   const handleAuthComplete = () => {
-    console.log('[App] Auth complete, setting loggedIn and navigating');
     setLoggedIn(true);
     navigate('/home', { replace: true });
   };
 
   // Handle logout
   const handleLogout = () => {
-    console.log('[App] Logout');
     authUtils.clearAuth();
     setLoggedIn(false);
   };

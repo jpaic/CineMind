@@ -35,11 +35,9 @@ export default function Login({ onAuthComplete }) {
     e.preventDefault();
     
     if (authInProgress.current) {
-      console.log('[Login] Submit blocked - auth already in progress');
       return;
     }
     
-    console.log('[Login] Form submitted');
     setError("");
     setLoading(true);
     setShowOverlay(true);
@@ -58,7 +56,6 @@ export default function Login({ onAuthComplete }) {
       await new Promise(resolve => setTimeout(resolve, 600));
 
       if (!res.success) {
-        console.log('[Login] Auth failed');
         setError(res.error || "Something went wrong");
         setLoading(false);
         setShowOverlay(false);
@@ -66,17 +63,14 @@ export default function Login({ onAuthComplete }) {
         return;
       }
 
-      console.log('[Login] Auth successful');
       authUtils.setAuth(res.token, res.username, isSignup ? true : rememberMe);
 
       // Call completion callback
       if (onAuthComplete) {
-        console.log('[Login] Calling onAuthComplete');
         onAuthComplete();
       }
       
     } catch (err) {
-      console.error("Login error:", err);
       setError("Server error. Try again.");
       setLoading(false);
       setShowOverlay(false);

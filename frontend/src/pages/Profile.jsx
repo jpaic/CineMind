@@ -66,13 +66,11 @@ export default function Profile() {
         // Batch cache all newly fetched movies (don't await individual calls)
         const cachePromises = tmdbDetails.map(movie => 
           movieApi.cacheMovie(movie).catch(err => {
-            console.warn(`Failed to cache movie ${movie.id}:`, err);
           })
         );
         
         // Fire and forget - don't block on caching
         Promise.all(cachePromises).catch(err => {
-          console.warn('Some movies failed to cache:', err);
         });
       }
 
@@ -112,7 +110,6 @@ export default function Profile() {
 
       setShowcase(newShowcase);
     } catch (err) {
-      console.error('Failed to load showcase and library:', err);
     } finally {
       setLoading(false);
     }
@@ -184,7 +181,6 @@ export default function Profile() {
       
       handleCloseModal();
     } catch (err) {
-      console.error('Failed to add to showcase:', err);
       const errorMsg = err.message || 'Failed to update showcase. Please try again.';
       alert(errorMsg);
     }
@@ -199,7 +195,6 @@ export default function Profile() {
       newShowcase[index] = null;
       setShowcase(newShowcase);
     } catch (err) {
-      console.error('Failed to remove from showcase:', err);
       alert('Failed to update showcase. Please try again.');
     }
   };
