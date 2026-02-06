@@ -36,3 +36,15 @@ export const registerLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
+
+// Cache write limiter - 60 requests per minute per IP
+export const cacheLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 60,
+  message: {
+    success: false,
+    error: "Too many cache requests, please try again later"
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});

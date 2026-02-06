@@ -42,7 +42,6 @@ export const weeklyBriefService = {
   generateBrief: async (upcomingMovies) => {
     // Check cache first
     if (isCacheValid()) {
-      console.log('Using cached weekly brief');
       return {
         dateRange: cache.brief.dateRange,
         content: cache.brief.content
@@ -50,11 +49,9 @@ export const weeklyBriefService = {
     }
 
     try {
-      console.log('Generating new weekly brief with Groq...');
       
       // Check if API key exists
       if (!GROQ_API_KEY) {
-        console.error('GROQ API KEY is missing! Add VITE_GROQ_API_KEY to .env.local');
         throw new Error('Groq API key not configured');
       }
       
@@ -63,7 +60,6 @@ export const weeklyBriefService = {
         .map(m => `"${m.title}" (${m.date})${m.director !== 'TBA' ? ` directed by ${m.director}` : ''}`)
         .join(', ');
 
-      console.log('Movies for prompt:', movieList);
 
       const prompt = `Write a professional cinema weekly brief with journalistic flair (2-3 paragraphs, ~180-200 words) about the current film industry landscape.
 
@@ -86,7 +82,6 @@ Paragraph 3 (optional): Forward-looking statement or broader context
 
 Write ONLY the brief content - no titles, headers, or extra formatting.`;
 
-      console.log('Calling Groq API...');
 
       const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
@@ -108,18 +103,15 @@ Write ONLY the brief content - no titles, headers, or extra formatting.`;
         })
       });
 
-      console.log('Groq API response status:', response.status);
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-        console.error('Groq API error details:', errorData);
         throw new Error(`Groq API error: ${response.status} - ${JSON.stringify(errorData)}`);
       }
 
       const data = await response.json();
       
       const content = data.choices[0].message.content.trim();
-      console.log('Generated content:', content);
       
       const dateRange = getCurrentWeekRange();
 
@@ -130,7 +122,6 @@ Write ONLY the brief content - no titles, headers, or extra formatting.`;
         timestamp: Date.now()
       };
 
-      console.log('Weekly brief generated successfully');
       
       return {
         dateRange,
@@ -138,11 +129,9 @@ Write ONLY the brief content - no titles, headers, or extra formatting.`;
       };
 
     } catch (error) {
-      console.error('Failed to generate weekly brief:', error);
       
       // If we have stale cache, use it as fallback
       if (cache.brief.content) {
-        console.log('Using stale cache as fallback');
         return {
           dateRange: cache.brief.dateRange,
           content: cache.brief.content
@@ -150,7 +139,6 @@ Write ONLY the brief content - no titles, headers, or extra formatting.`;
       }
       
       // Otherwise use static fallback
-      console.log('Using static fallback content');
       return {
         dateRange: getCurrentWeekRange(),
         content: getFallbackBrief(upcomingMovies)
@@ -161,7 +149,6 @@ Write ONLY the brief content - no titles, headers, or extra formatting.`;
   // Clear cache manually (useful for testing or refresh)
   clearCache: () => {
     cache.brief = { content: null, dateRange: null, timestamp: null };
-    console.log('Weekly brief cache cleared');
   },
 
   // Get cache status (for debugging)

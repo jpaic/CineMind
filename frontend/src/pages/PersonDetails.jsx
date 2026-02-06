@@ -47,7 +47,6 @@ export default function PersonDetails() {
           setActiveTab('directing');
         }
       } catch (err) {
-        console.error('Error fetching person details:', err);
         setError('Failed to load person details');
       } finally {
         setLoading(false);

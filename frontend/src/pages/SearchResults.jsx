@@ -74,7 +74,6 @@ export default function SearchResults() {
         const combined = [...movies, ...people];
         setResults(combined);
       } catch (err) {
-        console.error('Search error:', err);
         setError('Failed to search. Please try again.');
       } finally {
         setLoading(false);

@@ -9,9 +9,13 @@ dotenv.config();
 
 const app = express();
 
+const allowedOrigins = process.env.FRONTEND_URL
+  ? process.env.FRONTEND_URL.split(",").map(origin => origin.trim())
+  : "*";
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || "*",
-  credentials: true,
+  origin: allowedOrigins,
+  credentials: Boolean(process.env.FRONTEND_URL),
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"]
 }));
@@ -23,13 +27,8 @@ app.use(express.urlencoded({ extended: true }));
 app.get("/", (req, res) => res.json({ status: "working", message: "API is running" }));
 app.get("/api", (req, res) => res.json({ status: "working", message: "API routes ready" }));
 
-// --- Rate limiting (skip cache endpoints) ---
-app.use("/api/", (req, res, next) => {
-  if (req.path.startsWith('/movies/cache')) {
-    return next();
-  }
-  return apiLimiter(req, res, next);
-});
+// --- Rate limiting ---
+app.use("/api/", apiLimiter);
 
 // --- Mount routers ---
 app.use("/api/auth", authRoutes);

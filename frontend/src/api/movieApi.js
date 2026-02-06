@@ -5,7 +5,6 @@ const API_BASE_URL = import.meta.env.VITE_API_URL;
 
 const getAuthToken = () => {
   const token = authUtils.getToken();
-  console.log('Token found:', token ? `Yes (${token.substring(0,20)}...)` : 'NO');
   return token;
 };
 
@@ -14,7 +13,6 @@ const fetchWithAuth = async (url, options = {}) => {
   const token = getAuthToken();
   
   if (!token) {
-    console.error('❌ No token found in storage');
     throw new Error('Not authenticated. Please log in.');
   }
   
@@ -27,17 +25,14 @@ const fetchWithAuth = async (url, options = {}) => {
     },
   };
 
-  console.log('📡 Making request to:', url);
   const response = await fetch(url, config);
   
   if (response.status === 401) {
-    console.error('❌ 401 Unauthorized - Token may be invalid or expired');
     throw new Error('Session expired. Please log in again.');
   }
   
   if (!response.ok) {
     const error = await response.json().catch(() => ({ error: 'Request failed' }));
-    console.error('❌ Request failed:', error);
     // Handle different error types
     if (response.status === 429) {
       throw new Error('Rate limit exceeded. Please wait a moment and try again.');
@@ -45,7 +40,6 @@ const fetchWithAuth = async (url, options = {}) => {
     throw new Error(error.error || `HTTP error! status: ${response.status}`);
   }
   
-  console.log('✅ Request successful');
   return response.json();
 };
 
