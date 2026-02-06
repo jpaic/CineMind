@@ -11,10 +11,6 @@ dotenv.config();
 
 const app = express();
 
-ensureSchema().catch((err) => {
-  console.error("Failed to ensure schema:", err);
-});
-
 const allowedOrigins = process.env.FRONTEND_URL
   ? process.env.FRONTEND_URL.split(",").map(origin => origin.trim())
   : "*";
