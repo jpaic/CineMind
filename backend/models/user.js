@@ -2,9 +2,9 @@ import db from "../config/db.js";
 
 export async function createUser(email, username, passwordHash) {
   const result = await db.query(
-    `INSERT INTO users (email, username, password_hash, adult_content_enabled)
-     VALUES ($1, $2, $3, false)
-     RETURNING id, email, username, created_at, adult_content_enabled`,
+    `INSERT INTO users (email, username, password_hash)
+     VALUES ($1, $2, $3)
+     RETURNING id, email, username, created_at`,
     [email, username, passwordHash]
   );
 
@@ -13,7 +13,7 @@ export async function createUser(email, username, passwordHash) {
 
 export async function getUserByEmail(email) {
   const result = await db.query(
-    "SELECT id, email, username, password_hash, created_at, adult_content_enabled FROM users WHERE email = $1",
+    "SELECT id, email, username, password_hash, created_at FROM users WHERE email = $1",
     [email]
   );
   return result.rows[0];
@@ -21,7 +21,7 @@ export async function getUserByEmail(email) {
 
 export async function getUserByUsername(username) {
   const result = await db.query(
-    "SELECT id, email, username, password_hash, created_at, adult_content_enabled FROM users WHERE username = $1",
+    "SELECT id, email, username, password_hash, created_at FROM users WHERE username = $1",
     [username]
   );
   return result.rows[0];

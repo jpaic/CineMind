@@ -294,15 +294,15 @@ export async function getCachedMovie(req, res) {
 
 export async function cacheMovie(req, res) {
   try {
-    const { movie_id, title, year, director, director_id, genres, poster_path, adult } = req.body;
+    const { movie_id, title, year, director, director_id, genres, poster_path } = req.body;
 
     if (!movie_id || !title) {
       return res.status(400).json({ success: false, error: "movie_id and title are required" });
     }
 
     await db.query(
-      `INSERT INTO movie_cache (movie_id, title, year, director, director_id, genres, poster_path, adult, last_updated)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP)
+      `INSERT INTO movie_cache (movie_id, title, year, director, director_id, genres, poster_path, last_updated)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP)
        ON CONFLICT (movie_id) 
        DO UPDATE SET 
          title = EXCLUDED.title,
@@ -311,9 +311,8 @@ export async function cacheMovie(req, res) {
          director_id = EXCLUDED.director_id,
          genres = EXCLUDED.genres,
          poster_path = EXCLUDED.poster_path,
-         adult = EXCLUDED.adult,
          last_updated = CURRENT_TIMESTAMP`,
-      [movie_id, title, year, director, director_id, JSON.stringify(genres), poster_path, adult ?? false]
+      [movie_id, title, year, director, director_id, JSON.stringify(genres), poster_path]
     );
 
     res.json({ success: true });

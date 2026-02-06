@@ -48,16 +48,6 @@ function AppContent() {
       setLoading(false);
 
       // If token was invalid and we're on a protected route, it will redirect
-      if (isValid) {
-        try {
-          const settings = await getUserSettings();
-          authUtils.setAdultContentEnabled(settings?.adultContentEnabled ?? false);
-          tmdbService.setAdultContentEnabled(settings?.adultContentEnabled ?? false);
-        } catch (err) {
-          authUtils.setAdultContentEnabled(false);
-          tmdbService.setAdultContentEnabled(false);
-        }
-      }
     };
 
     initAuth();

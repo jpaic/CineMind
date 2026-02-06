@@ -65,7 +65,7 @@ export const tmdbService = {
       const endDate = threeMonthsFromNow.toISOString().split('T')[0];
 
       const response = await fetch(
-        `${TMDB_BASE_URL}/discover/movie?api_key=${API_KEY}&language=en-US&region=US&with_original_language=en&sort_by=popularity.desc&primary_release_date.gte=${startDate}&primary_release_date.lte=${endDate}&with_release_type=3|2&include_adult=${adultContentEnabled}&without_genres=16&page=1`
+        `${TMDB_BASE_URL}/discover/movie?api_key=${API_KEY}&language=en-US&region=US&with_original_language=en&sort_by=popularity.desc&primary_release_date.gte=${startDate}&primary_release_date.lte=${endDate}&with_release_type=3|2&include_adult=false&without_genres=16&page=1`
       );
 
       if (!response.ok) {
@@ -295,15 +295,7 @@ export const tmdbService = {
         .filter(person => ['Acting', 'Directing'].includes(person.known_for_department))
         .filter(person => {
           const knownFor = person.known_for || [];
-          return knownFor.some(item => {
-            if (item.media_type !== 'movie' || item.original_language !== 'en') {
-              return false;
-            }
-            if (!adultContentEnabled && item.adult) {
-              return false;
-            }
-            return true;
-          });
+          return knownFor.some(item => item.media_type === 'movie' && !item.adult && item.original_language === 'en');
         });
 
       const peopleWithCredits = await Promise.allSettled(
@@ -320,11 +312,9 @@ export const tmdbService = {
             const credits = await creditsRes.json();
             const castMovies = credits.cast || [];
 
-            const englishMovies = castMovies.filter(movie => {
-              if (!movie.title || movie.original_language !== 'en') return false;
-              if (!adultContentEnabled && movie.adult) return false;
-              return true;
-            });
+            const englishMovies = castMovies.filter(
+              movie => movie.title && movie.original_language === 'en' && !movie.adult
+            );
 
             if (englishMovies.length === 0) {
               return null;
