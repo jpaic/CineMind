@@ -4,6 +4,7 @@ import { Search } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { getMovieUrl, getPersonUrl } from '../utils/urlUtils';
+import { authUtils } from '../utils/authUtils';
 
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
 const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p';
@@ -33,8 +34,9 @@ export default function SearchResults() {
         setLoading(true);
         setError(null);
 
+        const adultEnabled = authUtils.getAdultContentEnabled();
         const [moviesRes, peopleRes] = await Promise.all([
-          fetch(`${TMDB_BASE_URL}/search/movie?api_key=${API_KEY}&language=en-US&query=${encodeURIComponent(query)}&page=1`),
+          fetch(`${TMDB_BASE_URL}/search/movie?api_key=${API_KEY}&language=en-US&query=${encodeURIComponent(query)}&page=1&include_adult=${adultEnabled}`),
           fetch(`${TMDB_BASE_URL}/search/person?api_key=${API_KEY}&language=en-US&query=${encodeURIComponent(query)}&page=1`)
         ]);
 
@@ -47,6 +49,7 @@ export default function SearchResults() {
 
         const movies = moviesData.results
           .filter(movie => movie.poster_path)
+          .filter(movie => adultEnabled || !movie.adult)
           .slice(0, 20)
           .map(movie => ({
             id: movie.id,
@@ -60,6 +63,10 @@ export default function SearchResults() {
 
         const people = peopleData.results
           .filter(person => person.profile_path)
+          .filter(person => {
+            if (adultEnabled) return true;
+            return (person.known_for || []).every(item => !item.adult);
+          })
           .slice(0, 20)
           .map(person => ({
             id: person.id,
@@ -74,7 +81,6 @@ export default function SearchResults() {
         const combined = [...movies, ...people];
         setResults(combined);
       } catch (err) {
-        console.error('Search error:', err);
         setError('Failed to search. Please try again.');
       } finally {
         setLoading(false);

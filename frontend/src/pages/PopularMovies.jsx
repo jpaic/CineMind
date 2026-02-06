@@ -20,7 +20,6 @@ export default function PopularMovies() {
         const popularData = await tmdbService.getPopular();
         setMovies(popularData);
       } catch (err) {
-        console.error('Failed to fetch popular movies:', err);
         setError('Failed to load popular movies. Please try again.');
       } finally {
         setLoading(false);

@@ -20,7 +20,6 @@ export default function UpcomingMovies() {
         const upcomingData = await tmdbService.getUpcoming();
         setMovies(upcomingData);
       } catch (err) {
-        console.error('Failed to fetch upcoming movies:', err);
         setError('Failed to load upcoming movies. Please try again.');
       } finally {
         setLoading(false);

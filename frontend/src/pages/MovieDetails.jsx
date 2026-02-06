@@ -4,6 +4,7 @@ import { Star, Calendar, Clock, Film } from 'lucide-react';
 import { getPersonUrl } from '../utils/urlUtils';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
+import { authUtils } from '../utils/authUtils';
 
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
 const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p';
@@ -35,10 +36,15 @@ export default function MovieDetails() {
         const movieData = await movieRes.json();
         const creditsData = await creditsRes.json();
 
+        const adultEnabled = authUtils.getAdultContentEnabled();
+        if (!adultEnabled && movieData.adult) {
+          setError('Adult content is disabled in your settings.');
+          return;
+        }
+
         setMovie(movieData);
         setCredits(creditsData);
       } catch (err) {
-        console.error('Error fetching movie details:', err);
         setError('Failed to load movie details');
       } finally {
         setLoading(false);

@@ -1,13 +1,48 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Bell, Palette, Globe, Lock, Check } from 'lucide-react';
+import { getUserSettings, updateUserSettings } from '../api/auth';
+import { authUtils } from '../utils/authUtils';
+import { tmdbService } from '../api/tmdb';
 
 export default function Settings() {
   const [settings, setSettings] = useState({
     emailNotifications: true,
     darkMode: true,
     letterboxd: false,
-    imdb: false
+    imdb: false,
+    adultContentEnabled: false,
   });
+  const [settingsError, setSettingsError] = useState(null);
+
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const data = await getUserSettings();
+        setSettings((prev) => ({
+          ...prev,
+          adultContentEnabled: data?.adultContentEnabled ?? false,
+        }));
+      } catch (err) {
+        setSettingsError('Failed to load account settings.');
+      }
+    };
+
+    loadSettings();
+  }, []);
+
+  const handleAdultToggle = async () => {
+    const nextValue = !settings.adultContentEnabled;
+    setSettings((prev) => ({ ...prev, adultContentEnabled: nextValue }));
+    try {
+      const updated = await updateUserSettings({ adultContentEnabled: nextValue });
+      authUtils.setAdultContentEnabled(updated?.adultContentEnabled ?? nextValue);
+      tmdbService.setAdultContentEnabled(updated?.adultContentEnabled ?? nextValue);
+      setSettingsError(null);
+    } catch (err) {
+      setSettings((prev) => ({ ...prev, adultContentEnabled: !nextValue }));
+      setSettingsError('Failed to update adult content setting.');
+    }
+  };
 
   const settingsSections = [
     {
@@ -142,6 +177,33 @@ export default function Settings() {
             <div className="flex items-center gap-3 mb-4">
               <Lock className="w-5 h-5 text-purple-400" />
               <h2 className="text-xl font-semibold">Account</h2>
+            </div>
+
+            {settingsError && (
+              <div className="mb-4 rounded-lg border border-red-500/40 bg-red-900/20 px-4 py-3 text-sm text-red-300">
+                {settingsError}
+              </div>
+            )}
+
+            <div className="flex items-center justify-between py-3 border-b border-slate-800">
+              <div className="flex-1">
+                <p className="font-medium text-slate-200">Adult Content</p>
+                <p className="text-sm text-slate-500">Show adult movies and talent across the app</p>
+              </div>
+              <button
+                onClick={handleAdultToggle}
+                className={`relative w-12 h-6 rounded-full transition ${
+                  settings.adultContentEnabled
+                    ? 'bg-gradient-to-r from-cyan-500 to-purple-500'
+                    : 'bg-slate-700'
+                }`}
+              >
+                <span
+                  className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
+                    settings.adultContentEnabled ? 'translate-x-6' : 'translate-x-0'
+                  }`}
+                />
+              </button>
             </div>
 
             <div className="space-y-3">

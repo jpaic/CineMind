@@ -5,6 +5,7 @@ import FilterBar from '../components/FilterBar';
 import { movieApi } from '../api/movieApi';
 import { tmdbService } from '../api/tmdb';
 import FilmReelLoading from '../components/FilmReelLoading';
+import { authUtils } from '../utils/authUtils';
 
 export default function MyMovies() {
   const [movies, setMovies] = useState([]);
@@ -44,13 +45,11 @@ export default function MyMovies() {
         // Batch cache all newly fetched movies (fire and forget)
         const cachePromises = tmdbDetails.map(movie => 
           movieApi.cacheMovie(movie).catch(err => {
-            console.warn(`Failed to cache movie ${movie.id}:`, err);
           })
         );
         
         // Don't block on caching
         Promise.all(cachePromises).catch(err => {
-          console.warn('Some movies failed to cache:', err);
         });
       }
 
@@ -69,13 +68,16 @@ export default function MyMovies() {
           genres: cached ? (typeof cached.genres === 'string' ? JSON.parse(cached.genres) : cached.genres) : (tmdb?.genres || []),
           rating: item.rating, // User's rating
           watchedAt: item.watched_at,
+          adult: cached?.adult ?? tmdb?.adult ?? false,
         };
       });
 
-      setMovies(enrichedMovies);
-      setFilteredMovies(enrichedMovies);
+      const adultEnabled = authUtils.getAdultContentEnabled();
+      const filtered = adultEnabled ? enrichedMovies : enrichedMovies.filter(movie => !movie.adult);
+
+      setMovies(filtered);
+      setFilteredMovies(filtered);
     } catch (err) {
-      console.error('Failed to fetch library:', err);
       setError(err.message || 'Failed to load library');
     } finally {
       setLoading(false);

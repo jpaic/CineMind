@@ -2,7 +2,9 @@ import Cookies from "js-cookie";
 
 const TOKEN_KEY = "authToken";
 const USERNAME_KEY = "username";
+const ADULT_CONTENT_KEY = "adultContentEnabled";
 const API_URL = import.meta.env.VITE_API_URL;
+const isSecureContext = typeof window !== "undefined" && window.location.protocol === "https:";
 
 export const authUtils = {
   /**
@@ -13,7 +15,12 @@ export const authUtils = {
    */
   setAuth(token, username, rememberMe = false) {
     if (rememberMe) {
-      const options = { expires: 30, sameSite: "strict" };
+      const options = {
+        expires: 30,
+        sameSite: "lax",
+        secure: isSecureContext,
+        path: "/"
+      };
       Cookies.set(TOKEN_KEY, token, options);
       if (username) Cookies.set(USERNAME_KEY, username, options);
 
@@ -25,8 +32,8 @@ export const authUtils = {
       if (username) sessionStorage.setItem("username", username);
 
       // Remove cookies to avoid persistence
-      Cookies.remove(TOKEN_KEY);
-      Cookies.remove(USERNAME_KEY);
+      Cookies.remove(TOKEN_KEY, { path: "/" });
+      Cookies.remove(USERNAME_KEY, { path: "/" });
     }
   },
 
@@ -45,6 +52,16 @@ export const authUtils = {
       sessionStorage.getItem("username") ||
       "Guest"
     );
+  },
+
+  setAdultContentEnabled(enabled) {
+    sessionStorage.setItem(ADULT_CONTENT_KEY, String(Boolean(enabled)));
+  },
+
+  getAdultContentEnabled() {
+    const stored = sessionStorage.getItem(ADULT_CONTENT_KEY);
+    if (stored === null) return false;
+    return stored === "true";
   },
 
   /** Check if user is authenticated (only checks if token exists) */
@@ -72,17 +89,14 @@ export const authUtils = {
       });
 
       if (!response.ok) {
-        console.log('[authUtils] Token verification failed:', response.status);
         // Token is invalid or expired, clear it
         this.clearAuth();
         return false;
       }
 
       const data = await response.json();
-      console.log('[authUtils] Token verified successfully');
       return data.valid === true;
     } catch (error) {
-      console.error('[authUtils] Token verification error:', error);
       // On network error, be lenient and assume token might be valid
       // to avoid logging out users due to temporary network issues
       return this.isAuthenticated();
@@ -91,15 +105,15 @@ export const authUtils = {
 
   clearAuth() {
     // Remove from all storage locations synchronously
-    Cookies.remove(TOKEN_KEY);
-    Cookies.remove(USERNAME_KEY);
+    Cookies.remove(TOKEN_KEY, { path: "/" });
+    Cookies.remove(USERNAME_KEY, { path: "/" });
     sessionStorage.removeItem("token");
     sessionStorage.removeItem("username");
+    sessionStorage.removeItem(ADULT_CONTENT_KEY);
     
     // Double-check: force removal with path variations (some cookies might have paths)
-    Cookies.remove(TOKEN_KEY, { path: '/' });
-    Cookies.remove(USERNAME_KEY, { path: '/' });
+    Cookies.remove(TOKEN_KEY, { path: "/" });
+    Cookies.remove(USERNAME_KEY, { path: "/" });
     
-    console.log('[authUtils] Auth cleared. Token check:', this.getToken());
   },
 };

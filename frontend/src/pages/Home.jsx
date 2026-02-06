@@ -6,6 +6,7 @@ import Card from "../components/Card";
 import CardSkeleton from "../components/CardSkeleton";
 import { tmdbService } from "../api/tmdb";
 import { weeklyBriefService } from "../api/weeklyBrief";
+import { getCinemaNews } from "../api/news";
 
 export default function Home({ onLogout }) {
   const navigate = useNavigate();
@@ -18,42 +19,17 @@ export default function Home({ onLogout }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showUpcoming, setShowUpcoming] = useState(true);
+  const [cinemaNews, setCinemaNews] = useState([]);
 
-  // Hardcoded Cinema News
-  const cinemaNews = [
-    {
-      headline: "Christopher Nolan's Next Film Sets July 2026 Release Date",
-      description: "Universal Pictures confirms a summer release for Nolan's latest original feature.",
-      source: "Variety",
-      image: "https://img.logo.dev/variety.com?token=pk_Njb2Bg3ySle5ZdsTqsfQpA&size=200&format=png&retina=true",
-      url: "https://variety.com",
-      timeAgo: "2 days ago"
-    },
-    {
-      headline: "A24 Leads Independent Spirit Awards With 12 Nominations",
-      description: "The indie powerhouse dominates major categories as awards season heats up.",
-      source: "The Hollywood Reporter",
-      image: "https://img.logo.dev/hollywoodreporter.com?token=pk_Njb2Bg3ySle5ZdsTqsfQpA&size=200&format=png&retina=true",
-      url: "https://hollywoodreporter.com",
-      timeAgo: "3 days ago"
-    },
-    {
-      headline: "Cannes Film Festival Reveals 2025 Competition Lineup",
-      description: "Festival organizers announce a director-driven slate for the upcoming edition.",
-      source: "Deadline",
-      image: "https://img.logo.dev/deadline.com?token=pk_Njb2Bg3ySle5ZdsTqsfQpA&size=200&format=png&retina=true",
-      url: "https://deadline.com",
-      timeAgo: "5 days ago"
-    },
-    {
-      headline: "Warner Bros. Unveils Ambitious 2025–2026 Theatrical Slate",
-      description: "Major franchises and original projects headline the studio's roadmap.",
-      source: "IndieWire",
-      image: "https://img.logo.dev/indiewire.com?token=pk_Njb2Bg3ySle5ZdsTqsfQpA&size=200&format=png&retina=true",
-      url: "https://indiewire.com",
-      timeAgo: "6 days ago"
-    }
-  ];
+  const formatTimeAgo = (dateString) => {
+    if (!dateString) return "Just now";
+    const date = new Date(dateString);
+    const diffMs = Date.now() - date.getTime();
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    if (diffHours < 24) return `${diffHours || 1} hours ago`;
+    const diffDays = Math.floor(diffHours / 24);
+    return `${diffDays} days ago`;
+  };
 
   // Scroll to top on mount
   useEffect(() => {
@@ -71,30 +47,22 @@ export default function Home({ onLogout }) {
         setLoading(true);
         setError(null);
         
-        console.log('Starting to fetch home data...');
         
-        const [moviesData, popularData, peopleData] = await Promise.allSettled([
+        const [moviesData, popularData, peopleData, newsData] = await Promise.allSettled([
           tmdbService.getUpcomingShowcase(),
           tmdbService.getPopularShowcase(),
-          tmdbService.getTrendingPeople()
+          tmdbService.getTrendingPeople(),
+          getCinemaNews()
         ]);
         
-        console.log('Movies result:', moviesData);
-        console.log('Popular result:', popularData);
-        console.log('People result:', peopleData);
         
         // Handle upcoming movies
         if (moviesData.status === 'fulfilled') {
           setUpcomingMovies(moviesData.value || []);
           
-          try {
-            const brief = await weeklyBriefService.generateBrief(moviesData.value || []);
-            setWeeklyBrief(brief);
-          } catch (err) {
-            console.error('Failed to generate weekly brief:', err);
-          }
+          const brief = await weeklyBriefService.generateBrief(moviesData.value || []);
+          setWeeklyBrief(brief);
         } else {
-          console.error('Movies fetch failed:', moviesData.reason);
           setUpcomingMovies([]);
         }
         
@@ -102,7 +70,6 @@ export default function Home({ onLogout }) {
         if (popularData.status === 'fulfilled') {
           setPopularMovies(popularData.value || []);
         } else {
-          console.error('Popular fetch failed:', popularData.reason);
           setPopularMovies([]);
         }
         
@@ -110,18 +77,22 @@ export default function Home({ onLogout }) {
         if (peopleData.status === 'fulfilled') {
           setFeaturedPeople(peopleData.value || []);
         } else {
-          console.error('People fetch failed:', peopleData.reason);
           setFeaturedPeople([]);
         }
+
+        if (newsData.status === 'fulfilled') {
+          setCinemaNews(newsData.value || []);
+        } else {
+          setCinemaNews([]);
+        }
       } catch (err) {
-        console.error('Failed to fetch home data:', err);
         setError('Failed to load content. Please refresh the page.');
         setUpcomingMovies([]);
         setPopularMovies([]);
         setFeaturedPeople([]);
+        setCinemaNews([]);
       } finally {
         setLoading(false);
-        console.log('Finished loading home data');
       }
     };
 
@@ -357,17 +328,19 @@ export default function Home({ onLogout }) {
                     Cinema News
                   </h2>
                   <div className="space-y-4">
-                    {cinemaNews.map((news, i) => (
+                    {cinemaNews.length === 0 ? (
+                      <p className="text-slate-400">No news available right now.</p>
+                    ) : cinemaNews.map((news, i) => (
                       <a 
                         key={i}
-                        href={news.url}
+                        href={news.link}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex gap-4 border border-slate-800 rounded-lg p-4 hover:border-purple-400/50 transition group cursor-pointer hover:shadow-lg hover:shadow-purple-500/10"
                       >
                         <img 
-                          src={news.image}
-                          alt={news.source}
+                          src={news.image || 'https://img.logo.dev/variety.com?token=pk_Njb2Bg3ySle5ZdsTqsfQpA&size=200&format=png&retina=true'}
+                          alt={news.source || 'Cinema News'}
                           className="w-24 h-32 object-cover rounded flex-shrink-0 ring-1 ring-slate-700"
                           onError={(e) => {
                             e.target.src = 'https://img.logo.dev/variety.com?token=pk_Njb2Bg3ySle5ZdsTqsfQpA&size=200&format=png&retina=true';
@@ -375,7 +348,7 @@ export default function Home({ onLogout }) {
                         />
                         <div className="flex-1 min-w-0 flex flex-col justify-center">
                           <h3 className="font-semibold text-slate-50 mb-1 group-hover:text-purple-300 transition line-clamp-2">
-                            {news.headline}
+                            {news.title}
                           </h3>
                           {news.description && (
                             <p className="text-sm text-slate-400 mb-2 line-clamp-2">{news.description}</p>
@@ -383,7 +356,7 @@ export default function Home({ onLogout }) {
                           <div className="flex items-center gap-2">
                             <span className="text-xs text-purple-400 font-medium">{news.source}</span>
                             <span className="text-xs text-slate-600">•</span>
-                            <span className="text-xs text-slate-500">{news.timeAgo}</span>
+                            <span className="text-xs text-slate-500">{formatTimeAgo(news.pubDate)}</span>
                           </div>
                         </div>
                       </a>
