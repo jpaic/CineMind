@@ -4,6 +4,7 @@ import { User, Calendar, MapPin, ChevronDown, ChevronUp } from 'lucide-react';
 import { getMovieUrl } from '../utils/urlUtils';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
+import { authUtils } from '../utils/authUtils';
 
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
 const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p';
@@ -37,8 +38,17 @@ export default function PersonDetails() {
         const personData = await personRes.json();
         const creditsData = await creditsRes.json();
 
+        const adultEnabled = authUtils.getAdultContentEnabled();
+        const filteredCredits = adultEnabled
+          ? creditsData
+          : {
+              ...creditsData,
+              cast: (creditsData.cast || []).filter((movie) => !movie.adult),
+              crew: (creditsData.crew || []).filter((movie) => !movie.adult),
+            };
+
         setPerson(personData);
-        setCredits(creditsData);
+        setCredits(filteredCredits);
 
         const actingCount = creditsData.cast?.length || 0;
         const directingCount = creditsData.crew?.filter(c => c.job === 'Director').length || 0;
@@ -47,7 +57,6 @@ export default function PersonDetails() {
           setActiveTab('directing');
         }
       } catch (err) {
-        console.error('Error fetching person details:', err);
         setError('Failed to load person details');
       } finally {
         setLoading(false);

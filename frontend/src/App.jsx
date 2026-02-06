@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Route, Routes, Navigate, useNavigate } from 'react-router-dom';
 import { authUtils } from './utils/authUtils';
+import { getUserSettings } from './api/auth';
+import { tmdbService } from './api/tmdb';
 import AppLayout from './components/AppLayout';
 import Landing from './pages/Landing';
 import Login from './pages/Login';
@@ -29,29 +31,32 @@ function AppContent() {
   // Initialize auth state on mount - verify token with backend
   useEffect(() => {
     const initAuth = async () => {
-      console.log('[App] Checking authentication...');
       
       // First check if token exists
       const hasToken = authUtils.isAuthenticated();
       
       if (!hasToken) {
-        console.log('[App] No token found');
         setLoggedIn(false);
         setLoading(false);
         return;
       }
 
       // Token exists, verify it's valid with backend
-      console.log('[App] Token found, verifying with backend...');
       const isValid = await authUtils.verifyToken();
       
-      console.log('[App] Token verification result:', isValid);
       setLoggedIn(isValid);
       setLoading(false);
 
       // If token was invalid and we're on a protected route, it will redirect
-      if (!isValid) {
-        console.log('[App] Token invalid - user will be redirected to landing');
+      if (isValid) {
+        try {
+          const settings = await getUserSettings();
+          authUtils.setAdultContentEnabled(settings?.adultContentEnabled ?? false);
+          tmdbService.setAdultContentEnabled(settings?.adultContentEnabled ?? false);
+        } catch (err) {
+          authUtils.setAdultContentEnabled(false);
+          tmdbService.setAdultContentEnabled(false);
+        }
       }
     };
 
@@ -60,33 +65,29 @@ function AppContent() {
 
   // Handle start of transition from Landing page (navigate during peak)
   const handleStartTransition = () => {
-    console.log('[App] Transition started, will navigate at peak');
     setShowTransition(true);
     
     // Navigate at the peak of the transition (~1200ms)
     setTimeout(() => {
-      console.log('[App] Navigating to /home at transition peak');
       navigate('/home', { replace: true });
     }, 1200);
   };
 
   // Handle transition animation completion
   const handleTransitionComplete = () => {
-    console.log('[App] Transition animation complete, clearing overlay');
     setShowTransition(false);
   };
 
   // Handle auth completion (simple - just set state)
   const handleAuthComplete = () => {
-    console.log('[App] Auth complete, setting loggedIn and navigating');
     setLoggedIn(true);
     navigate('/home', { replace: true });
   };
 
   // Handle logout
   const handleLogout = () => {
-    console.log('[App] Logout');
     authUtils.clearAuth();
+    tmdbService.setAdultContentEnabled(false);
     setLoggedIn(false);
   };
 

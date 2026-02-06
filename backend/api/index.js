@@ -3,15 +3,25 @@ import cors from "cors";
 import dotenv from "dotenv";
 import authRoutes from "../routes/authRoutes.js";
 import movieRoutes from "../routes/movieRoutes.js";
+import newsRoutes from "../routes/newsRoutes.js";
 import { apiLimiter } from "../middleware/rateLimiter.js";
+import { ensureSchema } from "../utils/schema.js";
 
 dotenv.config();
 
 const app = express();
 
+ensureSchema().catch((err) => {
+  console.error("Failed to ensure schema:", err);
+});
+
+const allowedOrigins = process.env.FRONTEND_URL
+  ? process.env.FRONTEND_URL.split(",").map(origin => origin.trim())
+  : "*";
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || "*",
-  credentials: true,
+  origin: allowedOrigins,
+  credentials: Boolean(process.env.FRONTEND_URL),
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"]
 }));
@@ -23,17 +33,13 @@ app.use(express.urlencoded({ extended: true }));
 app.get("/", (req, res) => res.json({ status: "working", message: "API is running" }));
 app.get("/api", (req, res) => res.json({ status: "working", message: "API routes ready" }));
 
-// --- Rate limiting (skip cache endpoints) ---
-app.use("/api/", (req, res, next) => {
-  if (req.path.startsWith('/movies/cache')) {
-    return next();
-  }
-  return apiLimiter(req, res, next);
-});
+// --- Rate limiting ---
+app.use("/api/", apiLimiter);
 
 // --- Mount routers ---
 app.use("/api/auth", authRoutes);
 app.use("/api/movies", movieRoutes);
+app.use("/api/news", newsRoutes);
 
 // --- 404 handler ---
 app.use((req, res) => {
@@ -46,6 +52,9 @@ app.use((req, res) => {
       "POST /api/auth/register",
       "POST /api/auth/login",
       "GET /api/auth/profile",
+      "GET /api/auth/settings",
+      "PUT /api/auth/settings",
+      "GET /api/news",
       "POST /api/movies/add",
       "GET /api/movies/library",
       "PUT /api/movies/:movieId/rating",

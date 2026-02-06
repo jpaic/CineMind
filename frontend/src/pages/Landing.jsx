@@ -16,17 +16,14 @@ export default function Landing({ onStartTransition }) {
   const handleGetStarted = () => {
     // Re-check authentication at click time to avoid stale state
     const isAuth = authUtils.isAuthenticated();
-    console.log('[Landing] Get Started clicked, authenticated:', isAuth);
     
     if (isAuth) {
       // Has valid auth - show transition before going to home
-      console.log('[Landing] User authenticated, starting transition');
       if (onStartTransition) {
         onStartTransition();
       }
     } else {
       // Not authenticated - go straight to login (no transition)
-      console.log('[Landing] User not authenticated, going to signup');
       navigate('/login?signup=true');
     }
   };

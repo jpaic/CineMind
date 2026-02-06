@@ -66,13 +66,11 @@ export default function Profile() {
         // Batch cache all newly fetched movies (don't await individual calls)
         const cachePromises = tmdbDetails.map(movie => 
           movieApi.cacheMovie(movie).catch(err => {
-            console.warn(`Failed to cache movie ${movie.id}:`, err);
           })
         );
         
         // Fire and forget - don't block on caching
         Promise.all(cachePromises).catch(err => {
-          console.warn('Some movies failed to cache:', err);
         });
       }
 
@@ -92,10 +90,16 @@ export default function Profile() {
           genres: cached ? (typeof cached.genres === 'string' ? JSON.parse(cached.genres) : cached.genres) : (tmdb?.genres || []),
           watchedDate: userMovie.watched_date,
           updatedAt: userMovie.updated_at,
+          adult: cached?.adult ?? tmdb?.adult ?? false,
         };
       });
 
-      setUserLibrary(enrichedMovies);
+      const adultEnabled = authUtils.getAdultContentEnabled();
+      const filteredMovies = adultEnabled
+        ? enrichedMovies
+        : enrichedMovies.filter(movie => !movie.adult);
+
+      setUserLibrary(filteredMovies);
 
       // Initialize showcase array
       const newShowcase = [null, null, null, null];
@@ -103,7 +107,7 @@ export default function Profile() {
       // Fill showcase with movies from backend (positions already converted to 0-3 by API)
       for (const item of showcaseItems) {
         if (item.position >= 0 && item.position <= 3) {
-          const movie = enrichedMovies.find(m => m.id === item.movie_id);
+          const movie = filteredMovies.find(m => m.id === item.movie_id);
           if (movie) {
             newShowcase[item.position] = movie;
           }
@@ -112,18 +116,9 @@ export default function Profile() {
 
       setShowcase(newShowcase);
     } catch (err) {
-      console.error('Failed to load showcase and library:', err);
     } finally {
       setLoading(false);
     }
-  };
-
-  const user = {
-    name: username,
-    bio: "Film enthusiast and Christopher Nolan superfan. Love sci-fi, thrillers, and anything that makes me think.",
-    favoriteGenres: ["Sci-Fi", "Thriller", "Drama"],
-    profilePicture: `https://ui-avatars.com/api/?name=${encodeURIComponent(username)}&size=200&background=1f2937&color=d4af37`,
-    headerImage: "https://image.tmdb.org/t/p/original/jOzrELAzFxtMx2I4uDGHOotdfsS.jpg",
   };
 
   const stats = {
@@ -135,7 +130,39 @@ export default function Profile() {
     avgRating: userLibrary.length > 0 
       ? (userLibrary.reduce((sum, m) => sum + m.rating, 0) / userLibrary.length).toFixed(1)
       : 0,
-    favoriteDirector: "Christopher Nolan", // TODO: Calculate from library
+  };
+
+  const directorCounts = userLibrary.reduce((acc, movie) => {
+    if (movie.director) {
+      acc[movie.director] = (acc[movie.director] || 0) + 1;
+    }
+    return acc;
+  }, {});
+  const favoriteDirector = Object.entries(directorCounts)
+    .sort((a, b) => b[1] - a[1])[0]?.[0] || "—";
+
+  const genreCounts = userLibrary.reduce((acc, movie) => {
+    (movie.genres || []).forEach((genre) => {
+      acc[genre] = (acc[genre] || 0) + 1;
+    });
+    return acc;
+  }, {});
+  const topGenres = Object.entries(genreCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3);
+
+  const ratingBuckets = userLibrary.reduce((acc, movie) => {
+    const bucket = Math.floor(movie.rating || 0);
+    acc[bucket] = (acc[bucket] || 0) + 1;
+    return acc;
+  }, {});
+
+  const user = {
+    name: username,
+    bio: "Film enthusiast and Christopher Nolan superfan. Love sci-fi, thrillers, and anything that makes me think.",
+    favoriteGenres: topGenres.length > 0 ? topGenres.map(([genre]) => genre) : ["Sci-Fi", "Thriller", "Drama"],
+    profilePicture: `https://ui-avatars.com/api/?name=${encodeURIComponent(username)}&size=200&background=1f2937&color=d4af37`,
+    headerImage: "https://image.tmdb.org/t/p/original/jOzrELAzFxtMx2I4uDGHOotdfsS.jpg",
   };
 
   // Get movies already in showcase
@@ -184,7 +211,6 @@ export default function Profile() {
       
       handleCloseModal();
     } catch (err) {
-      console.error('Failed to add to showcase:', err);
       const errorMsg = err.message || 'Failed to update showcase. Please try again.';
       alert(errorMsg);
     }
@@ -199,7 +225,6 @@ export default function Profile() {
       newShowcase[index] = null;
       setShowcase(newShowcase);
     } catch (err) {
-      console.error('Failed to remove from showcase:', err);
       alert('Failed to update showcase. Please try again.');
     }
   };
@@ -256,6 +281,55 @@ export default function Profile() {
                 <p className={`text-xl font-bold ${key === "thisYear" ? "text-purple-400" : "text-cyan-400"}`}>{value}</p>
               </div>
             ))}
+          </div>
+
+          {/* Taste Analytics */}
+          <div className="border border-slate-800 rounded-lg p-4 hover:border-purple-500/30 transition">
+            <h2 className="text-lg font-semibold text-slate-100 mb-3">Taste Analytics</h2>
+            <div className="space-y-3">
+              <div>
+                <p className="text-xs uppercase tracking-wide text-slate-500">Favorite Director</p>
+                <p className="text-sm text-slate-200">{favoriteDirector}</p>
+              </div>
+
+              <div>
+                <p className="text-xs uppercase tracking-wide text-slate-500 mb-2">Top Genres</p>
+                <div className="flex flex-wrap gap-1">
+                  {topGenres.length > 0 ? (
+                    topGenres.map(([genre, count]) => (
+                      <span key={genre} className="px-2 py-0.5 text-xs border border-purple-500/30 rounded text-purple-300">
+                        {genre} · {count}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-xs text-slate-500">No genre data yet</span>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <p className="text-xs uppercase tracking-wide text-slate-500 mb-2">Rating Spread</p>
+                <div className="space-y-1">
+                  {Array.from({ length: 10 }).map((_, idx) => {
+                    const label = idx + 1;
+                    const count = ratingBuckets[label] || 0;
+                    const width = userLibrary.length ? Math.round((count / userLibrary.length) * 100) : 0;
+                    return (
+                      <div key={label} className="flex items-center gap-2">
+                        <span className="text-xs text-slate-500 w-4">{label}</span>
+                        <div className="flex-1 h-2 bg-slate-800 rounded">
+                          <div
+                            className="h-2 rounded bg-gradient-to-r from-cyan-500 to-purple-500"
+                            style={{ width: `${width}%` }}
+                          />
+                        </div>
+                        <span className="text-xs text-slate-500 w-6 text-right">{count}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 

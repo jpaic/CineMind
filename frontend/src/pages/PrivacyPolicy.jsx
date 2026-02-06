@@ -27,8 +27,8 @@ export default function PrivacyPolicy() {
       content: 'We use cookies and similar tracking technologies to collect usage data and improve your experience. You can control cookie preferences through your browser settings.'
     },
     {
-      title: 'Children\'s Privacy',
-      content: 'Our service is not directed to children under 13. We do not knowingly collect personal information from children under 13. If you believe we have collected such information, please contact us.'
+      title: 'Age Requirement',
+      content: 'Our service is intended for users who are 18 years of age or older. We do not knowingly collect personal information from anyone under 18. If you believe we have collected such information, please contact us so we can remove it.'
     },
     {
       title: 'Changes to This Policy',

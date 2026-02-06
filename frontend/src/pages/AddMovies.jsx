@@ -28,7 +28,6 @@ export default function AddMovies({ onMovieAdded }) {
         const results = await tmdbService.searchMovies(searchQuery);
         setSearchResults(results);
       } catch (err) {
-        console.error('Search failed:', err);
         setError('Search failed. Please try again.');
       } finally {
         setIsSearching(false);
@@ -44,7 +43,6 @@ export default function AddMovies({ onMovieAdded }) {
       const details = await tmdbService.getMovieDetails(movie.id);
       setSelectedMovie(details || movie);
     } catch (err) {
-      console.error('Failed to get movie details:', err);
       setSelectedMovie(movie);
     }
   };
@@ -73,7 +71,6 @@ export default function AddMovies({ onMovieAdded }) {
       alert(`Added ${selectedMovie.title} with rating ${rating}/10`);
       handleClose();
     } catch (err) {
-      console.error('Failed to add movie:', err);
       setError(err.message || 'Failed to add movie. Please try again.');
     } finally {
       setIsAdding(false);
