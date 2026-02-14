@@ -2,6 +2,13 @@
 export function validatePassword(password) {
   const errors = [];
 
+  if (typeof password !== "string") {
+    return {
+      isValid: false,
+      errors: ["Password is required"],
+    };
+  }
+
   if (password.length < 8) {
     errors.push("Password must be at least 8 characters long");
   }
