@@ -114,6 +114,9 @@ export async function getShowcase(req, res) {
 }
 
 export async function setShowcasePosition(req, res) {
+  const client = await db.connect();
+  let transactionStarted = false;
+
   try {
     const positionNum = parseInt(req.params.position, 10);
     const { movie_id } = req.body;
@@ -126,55 +129,71 @@ export async function setShowcasePosition(req, res) {
       return res.status(400).json({ success: false, error: "movie_id is required" });
     }
 
-    const movieCheck = await db.query(
+    await client.query("BEGIN");
+    transactionStarted = true;
+
+    const movieCheck = await client.query(
       "SELECT id FROM user_movies WHERE user_id = $1 AND movie_id = $2",
       [req.user.id, movie_id]
     );
 
     if (movieCheck.rows.length === 0) {
-      return res.status(400).json({ 
-        success: false, 
-        error: "Movie not found in your library. Please rate this movie first." 
+      if (transactionStarted) {
+        await client.query("ROLLBACK");
+        transactionStarted = false;
+      }
+      return res.status(400).json({
+        success: false,
+        error: "Movie not found in your library. Please rate this movie first.",
       });
     }
 
     const userMovieId = movieCheck.rows[0].id;
 
-    const existingMovie = await db.query(
+    const existingMovie = await client.query(
       "SELECT position FROM user_profile_showcase WHERE user_id = $1 AND movie_id = $2",
       [req.user.id, userMovieId]
     );
 
     if (existingMovie.rows.length > 0 && existingMovie.rows[0].position !== positionNum) {
-      await db.query(
+      await client.query(
         "DELETE FROM user_profile_showcase WHERE user_id = $1 AND movie_id = $2",
         [req.user.id, userMovieId]
       );
     }
 
-    const existing = await db.query(
+    const existing = await client.query(
       "SELECT id FROM user_profile_showcase WHERE user_id = $1 AND position = $2",
       [req.user.id, positionNum]
     );
 
     if (existing.rows.length > 0) {
-      await db.query(
+      await client.query(
         "UPDATE user_profile_showcase SET movie_id = $1, updated_at = CURRENT_TIMESTAMP WHERE user_id = $2 AND position = $3",
         [userMovieId, req.user.id, positionNum]
       );
     } else {
-      await db.query(
+      await client.query(
         "INSERT INTO user_profile_showcase (user_id, position, movie_id) VALUES ($1, $2, $3)",
         [req.user.id, positionNum, userMovieId]
       );
     }
 
+    await client.query("COMMIT");
+    transactionStarted = false;
+
     res.json({ success: true });
   } catch (error) {
+    if (transactionStarted) {
+      await client.query("ROLLBACK");
+    }
     console.error("Update showcase error:", error);
     res.status(500).json({ success: false, error: "Failed to update showcase" });
+  } finally {
+    client.release();
   }
 }
+
 
 export async function deleteShowcasePosition(req, res) {
   try {
