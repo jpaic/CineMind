@@ -1,6 +1,7 @@
 import { verifyToken } from "../utils/jwt.js";
+import { getUserById } from "../models/user.js";
 
-export function authRequired(req, res, next) {
+export async function authRequired(req, res, next) {
   const header = req.headers.authorization;
 
   if (!header) return res.status(401).json({ error: "Missing token" });
@@ -12,7 +13,22 @@ export function authRequired(req, res, next) {
 
   try {
     const decoded = verifyToken(token);
-    req.user = decoded;
+
+    if (!decoded?.id) {
+      return res.status(401).json({ error: "Invalid token" });
+    }
+
+    const user = await getUserById(decoded.id);
+    if (!user) {
+      return res.status(401).json({ error: "Invalid token" });
+    }
+
+    req.user = {
+      id: user.id,
+      username: user.username,
+      email: user.email,
+    };
+
     next();
   } catch (err) {
     res.status(401).json({ error: "Invalid token" });

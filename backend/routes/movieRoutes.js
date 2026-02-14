@@ -2,6 +2,7 @@ import { Router } from "express";
 import * as movieController from "../controllers/movieController.js";
 import { authRequired } from "../middleware/authMiddleware.js";
 import { cacheLimiter } from "../middleware/rateLimiter.js";
+import { serviceAuthRequired } from "../middleware/serviceAuthMiddleware.js";
 
 const router = Router();
 
@@ -36,18 +37,18 @@ router.delete("/watchlist/:movieId", authRequired, movieController.removeFromWat
 // Check if movie is in watchlist
 router.get("/watchlist/check/:movieId", authRequired, movieController.checkWatchlist);
 
-// ===== CACHE ROUTES (NO AUTH - PUBLIC) =====
+// ===== CACHE ROUTES =====
 
 // Get cached movie
 router.get("/cache/:movieId", movieController.getCachedMovie);
 
 // Cache movie data
-router.post("/cache", cacheLimiter, movieController.cacheMovie);
+router.post("/cache", serviceAuthRequired, cacheLimiter, movieController.cacheMovie);
 
 // Get multiple cached movies
-router.post("/cache/bulk", cacheLimiter, movieController.getCachedMovies);
+router.post("/cache/bulk", serviceAuthRequired, cacheLimiter, movieController.getCachedMovies);
 
 // Clean old cache entries
-router.delete("/cache/cleanup", cacheLimiter, movieController.cleanupCache);
+router.delete("/cache/cleanup", serviceAuthRequired, cacheLimiter, movieController.cleanupCache);
 
 export default router;
