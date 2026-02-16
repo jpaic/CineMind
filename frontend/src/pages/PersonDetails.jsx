@@ -46,7 +46,7 @@ export default function PersonDetails() {
         if (directingCount > actingCount) {
           setActiveTab('directing');
         }
-      } catch (err) {
+      } catch {
         setError('Failed to load person details');
       } finally {
         setLoading(false);
@@ -96,14 +96,11 @@ export default function PersonDetails() {
   }
 
   const actingRoles = credits.cast
-    .filter(movie => movie.poster_path)
-    .sort((a, b) => b.popularity - a.popularity)
-    .slice(0, 18);
+    .sort((a, b) => (b.release_date || '').localeCompare(a.release_date || ''));
 
   const directingRoles = credits.crew
-    .filter(movie => movie.job === 'Director' && movie.poster_path)
-    .sort((a, b) => b.popularity - a.popularity)
-    .slice(0, 18);
+    .filter(movie => movie.job === 'Director')
+    .sort((a, b) => (b.release_date || '').localeCompare(a.release_date || ''));
 
   const showTabs = actingRoles.length > 0 && directingRoles.length > 0;
   const displayMovies = showTabs 
@@ -266,11 +263,17 @@ export default function PersonDetails() {
                       className="group text-left"
                     >
                       <div className="aspect-[2/3] rounded-lg overflow-hidden bg-slate-900 ring-1 ring-slate-700 hover:ring-purple-400/50 transition-all mb-2 group-hover:scale-105">
-                        <img
-                          src={`${TMDB_IMAGE_BASE}/w500${movie.poster_path}`}
-                          alt={movie.title}
-                          className="w-full h-full object-cover"
-                        />
+                        {movie.poster_path ? (
+                          <img
+                            src={`${TMDB_IMAGE_BASE}/w500${movie.poster_path}`}
+                            alt={movie.title}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-slate-500 text-xs p-2 text-center">
+                            No poster available
+                          </div>
+                        )}
                       </div>
                       <h4 className="font-semibold text-sm group-hover:text-purple-400 transition line-clamp-2">
                         {movie.title}

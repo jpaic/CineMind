@@ -26,3 +26,32 @@ export async function getUserByUsername(username) {
   );
   return result.rows[0];
 }
+
+export async function getUserById(userId) {
+  const result = await db.query(
+    "SELECT id, email, username, password_hash, created_at FROM users WHERE id = $1",
+    [userId]
+  );
+  return result.rows[0];
+}
+
+export async function updateUserPassword(userId, passwordHash) {
+  const result = await db.query(
+    `UPDATE users
+     SET password_hash = $2
+     WHERE id = $1
+     RETURNING id, email, username, created_at`,
+    [userId, passwordHash]
+  );
+
+  return result.rows[0];
+}
+
+export async function deleteUserById(userId) {
+  const result = await db.query(
+    "DELETE FROM users WHERE id = $1 RETURNING id",
+    [userId]
+  );
+
+  return result.rows[0];
+}

@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Star, Calendar, Clock, Film } from 'lucide-react';
+import { Star, Calendar, Clock, Film, Bookmark, BookmarkCheck } from 'lucide-react';
 import { getPersonUrl } from '../utils/urlUtils';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
+import { movieApi } from '../api/movieApi';
+import { authUtils } from '../utils/authUtils';
 
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
 const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p';
@@ -16,6 +18,12 @@ export default function MovieDetails() {
   const [credits, setCredits] = useState({ cast: [], crew: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [userRating, setUserRating] = useState(0);
+  const [hoverRating, setHoverRating] = useState(0);
+  const [isSavingRating, setIsSavingRating] = useState(false);
+  const [isInWatchlist, setIsInWatchlist] = useState(false);
+  const [isTogglingWatchlist, setIsTogglingWatchlist] = useState(false);
+  const [actionError, setActionError] = useState(null);
 
   useEffect(() => {
     const fetchMovieDetails = async () => {
@@ -37,7 +45,27 @@ export default function MovieDetails() {
 
         setMovie(movieData);
         setCredits(creditsData);
-      } catch (err) {
+
+        if (authUtils.isAuthenticated()) {
+          const [watchlistRes, libraryRes] = await Promise.allSettled([
+            movieApi.checkWatchlist(id),
+            movieApi.getLibrary(2000, 0),
+          ]);
+
+          if (watchlistRes.status === 'fulfilled') {
+            setIsInWatchlist(Boolean(watchlistRes.value?.inWatchlist));
+          }
+
+          if (libraryRes.status === 'fulfilled' && libraryRes.value?.movies) {
+            const ratedMovie = libraryRes.value.movies.find(
+              (libraryMovie) => Number(libraryMovie.movie_id) === Number(id)
+            );
+            if (ratedMovie?.rating) {
+              setUserRating(Number(ratedMovie.rating));
+            }
+          }
+        }
+      } catch {
         setError('Failed to load movie details');
       } finally {
         setLoading(false);
@@ -46,6 +74,70 @@ export default function MovieDetails() {
 
     fetchMovieDetails();
   }, [id]);
+
+  const saveRating = async (rating) => {
+    if (!movie || isSavingRating) {
+      return;
+    }
+
+    setIsSavingRating(true);
+    setActionError(null);
+
+    try {
+      if (userRating > 0) {
+        await movieApi.updateRating(movie.id, rating);
+      } else {
+        const director = credits.crew.find((person) => person.job === 'Director');
+        await movieApi.addMovie(movie.id, rating, new Date(), {
+          id: movie.id,
+          title: movie.title,
+          year: movie.release_date ? new Date(movie.release_date).getFullYear() : null,
+          poster: movie.poster_path ? `${TMDB_IMAGE_BASE}/original${movie.poster_path}` : null,
+          director: director?.name || 'Unknown',
+          directorId: director?.id || null,
+          genres: movie.genres?.map((genre) => genre.name) || [],
+        });
+      }
+
+      setUserRating(rating);
+    } catch (err) {
+      setActionError(err.message || 'Unable to save your rating right now.');
+    } finally {
+      setIsSavingRating(false);
+    }
+  };
+
+  const toggleWatchlist = async () => {
+    if (!movie || isTogglingWatchlist) {
+      return;
+    }
+
+    setIsTogglingWatchlist(true);
+    setActionError(null);
+
+    try {
+      if (isInWatchlist) {
+        await movieApi.removeFromWatchlist(movie.id);
+        setIsInWatchlist(false);
+      } else {
+        const director = credits.crew.find((person) => person.job === 'Director');
+        await movieApi.addToWatchlist(movie.id, {
+          id: movie.id,
+          title: movie.title,
+          year: movie.release_date ? new Date(movie.release_date).getFullYear() : null,
+          poster: movie.poster_path ? `${TMDB_IMAGE_BASE}/original${movie.poster_path}` : null,
+          director: director?.name || 'Unknown',
+          directorId: director?.id || null,
+          genres: movie.genres?.map((genre) => genre.name) || [],
+        });
+        setIsInWatchlist(true);
+      }
+    } catch (err) {
+      setActionError(err.message || 'Unable to update your watchlist right now.');
+    } finally {
+      setIsTogglingWatchlist(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -87,7 +179,7 @@ export default function MovieDetails() {
   }
 
   const director = credits.crew.find(person => person.job === 'Director');
-  const topCast = credits.cast.slice(0, 12);
+  const fullCast = credits.cast;
 
   const renderStars = (rating) => {
     const stars = Math.round(rating / 2);
@@ -223,6 +315,49 @@ export default function MovieDetails() {
                   </div>
                 )}
 
+                {/* User Actions */}
+                <div className="mb-6 rounded-lg border border-slate-800 bg-slate-900/60 p-4">
+                  <p className="text-sm text-slate-300 mb-3">Your actions</p>
+                  <div className="flex flex-wrap items-center gap-4">
+                    <div className="flex items-center gap-1.5">
+                      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((star) => (
+                        <button
+                          key={star}
+                          onClick={() => saveRating(star)}
+                          onMouseEnter={() => setHoverRating(star)}
+                          onMouseLeave={() => setHoverRating(0)}
+                          className="transition-transform hover:scale-125 active:scale-95"
+                          disabled={isSavingRating}
+                        >
+                          <Star
+                            className={`w-5 h-5 ${
+                              star <= (hoverRating || userRating)
+                                ? 'fill-amber-400 text-amber-400'
+                                : 'text-slate-700'
+                            }`}
+                          />
+                        </button>
+                      ))}
+                      <span className="ml-2 text-sm text-slate-200 font-semibold min-w-12">
+                        {(hoverRating || userRating) > 0 ? `${hoverRating || userRating}/10` : 'Rate'}
+                      </span>
+                    </div>
+
+                    <button
+                      onClick={toggleWatchlist}
+                      disabled={isTogglingWatchlist}
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-md border border-slate-700 bg-slate-800 hover:border-purple-400/60 hover:text-purple-300 transition disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      {isInWatchlist ? <BookmarkCheck className="w-4 h-4" /> : <Bookmark className="w-4 h-4" />}
+                      {isInWatchlist ? 'In Watchlist' : 'Add to Watchlist'}
+                    </button>
+                  </div>
+
+                  {actionError && (
+                    <p className="text-red-400 text-sm mt-3">{actionError}</p>
+                  )}
+                </div>
+
                 {/* Production Companies */}
                 {movie.production_companies && movie.production_companies.length > 0 && (
                   <div>
@@ -240,13 +375,13 @@ export default function MovieDetails() {
             </div>
 
             {/* Cast */}
-            {topCast.length > 0 && (
+            {fullCast.length > 0 && (
               <div className="mt-12 mb-12">
                 <h2 className="text-2xl font-bold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400">
                   Cast
                 </h2>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                  {topCast.map(person => (
+                  {fullCast.map(person => (
                     <button
                       key={person.id}
                       onClick={() => navigate(getPersonUrl(person.id, person.name))}

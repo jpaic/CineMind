@@ -84,8 +84,13 @@ export const movieApi = {
   },
 
   // Get user's movie library
-  getLibrary: async () => {
-    return fetchWithAuth(`${API_BASE_URL}/api/movies/library`);
+  getLibrary: async (limit = 50, offset = 0) => {
+    const params = new URLSearchParams({
+      limit: String(limit),
+      offset: String(offset),
+    });
+
+    return fetchWithAuth(`${API_BASE_URL}/api/movies/library?${params.toString()}`);
   },
 
   // Update movie rating
