@@ -119,7 +119,7 @@ export default function Profile() {
     name: username,
     bio: "Film enthusiast and Christopher Nolan superfan. Love sci-fi, thrillers, and anything that makes me think.",
     favoriteGenres: ["Sci-Fi", "Thriller", "Drama"],
-    profilePicture: `https://ui-avatars.com/api/?name=${encodeURIComponent(username)}&size=200&background=1f2937&color=d4af37`,
+    profilePicture: `https://ui-avatars.com/api/?name=${encodeURIComponent(username)}&size=200&background=1f2833&color=f1e9da`,
     headerImage: "https://image.tmdb.org/t/p/original/jOzrELAzFxtMx2I4uDGHOotdfsS.jpg",
   };
 
@@ -231,12 +231,12 @@ export default function Profile() {
         <div className="flex-shrink-0 w-full md:w-1/3 flex flex-col gap-4">
           {/* Profile Info */}
           <div className="flex flex-col items-center md:items-start gap-2">
-            <img src={user.profilePicture} alt={user.name} className="w-24 h-24 sm:w-28 sm:h-28 rounded-lg ring-2 ring-purple-500/30" />
-            <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent text-center md:text-left">{user.name}</h1>
+            <img src={user.profilePicture} alt={user.name} className="w-24 h-24 sm:w-28 sm:h-28 rounded-lg ring-2 ring-blue-500/30" />
+            <h1 className="text-2xl sm:text-3xl font-bold text-slate-50 text-center md:text-left">{user.name}</h1>
             <p className="text-slate-300 text-sm sm:text-base line-clamp-4 text-center md:text-left">{user.bio}</p>
             <div className="flex flex-wrap gap-1 justify-center md:justify-start">
               {user.favoriteGenres.map((genre) => (
-                <span key={genre} className="px-2 py-0.5 text-xs sm:text-sm border border-purple-500/30 rounded text-purple-300">
+                <span key={genre} className="px-2 py-0.5 text-xs sm:text-sm border border-blue-500/30 rounded text-slate-200">
                   {genre}
                 </span>
               ))}
@@ -246,9 +246,9 @@ export default function Profile() {
           {/* Stats */}
           <div className="space-y-2 mt-2">
             {Object.entries(stats).map(([key, value]) => (
-              <div key={key} className="border border-slate-800 rounded p-3 hover:border-purple-500/30 transition">
+              <div key={key} className="border border-slate-800 rounded p-3 hover:border-blue-500/30 transition">
                 <p className="text-slate-400 text-xs uppercase tracking-wide mb-1">{key.replace(/([A-Z])/g, " $1")}</p>
-                <p className={`text-xl font-bold ${key === "thisYear" ? "text-purple-400" : "text-cyan-400"}`}>{value}</p>
+                <p className={`text-xl font-bold ${key === "thisYear" ? "text-blue-500" : "text-blue-500"}`}>{value}</p>
               </div>
             ))}
           </div>
@@ -278,7 +278,7 @@ export default function Profile() {
                   ) : (
                     <button
                       onClick={() => handleOpenModal(idx)}
-                      className="w-full h-full rounded border-2 border-dashed border-purple-500/30 hover:border-purple-500/60 bg-slate-900/30 hover:bg-slate-900/50 flex items-center justify-center text-purple-400/70 text-4xl sm:text-5xl transition-all hover:scale-105 active:scale-95"
+                      className="w-full h-full rounded border-2 border-dashed border-blue-500/30 hover:border-blue-500/60 bg-slate-900/30 hover:bg-slate-900/50 flex items-center justify-center text-blue-500/70 text-4xl sm:text-5xl transition-all hover:scale-105 active:scale-95"
                     >
                       <Plus className="w-12 h-12 sm:w-16 sm:h-16" />
                     </button>
@@ -317,7 +317,7 @@ export default function Profile() {
                 placeholder="Search your rated films..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 rounded bg-slate-800 text-slate-50 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 border border-slate-700 transition-all"
+                className="w-full pl-10 pr-4 py-2.5 rounded bg-slate-800 text-slate-50 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 border border-slate-700 transition-all"
                 autoFocus
               />
             </div>
@@ -328,7 +328,7 @@ export default function Profile() {
                 <div
                   key={movie.id}
                   onClick={() => handleAddToShowcase(movie)}
-                  className="flex items-center gap-3 p-2 rounded border border-slate-800 hover:border-purple-400/50 hover:bg-slate-800/50 cursor-pointer transition-all duration-150 hover:scale-[1.02] active:scale-[0.98]"
+                  className="flex items-center gap-3 p-2 rounded border border-slate-800 hover:border-blue-500/50 hover:bg-slate-800/50 cursor-pointer transition-all duration-150 hover:scale-[1.02] active:scale-[0.98]"
                 >
                   {movie.poster ? (
                     <img

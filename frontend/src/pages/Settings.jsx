@@ -193,13 +193,13 @@ export default function Settings() {
   return (
     <div className="max-w-3xl mx-auto w-full">
       <div className="max-w-3xl mx-auto w-full">
-        <h1 className="text-3xl font-bold mb-2 bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
+        <h1 className="text-3xl font-bold mb-2 text-slate-50">
           Settings
         </h1>
         <p className="text-slate-400 mb-8">Manage your app preferences</p>
 
         {(actionMessage || actionError) && (
-          <div className={`mb-6 rounded-lg border px-4 py-3 text-sm ${actionError ? 'border-red-500/40 bg-red-900/20 text-red-300' : 'border-green-500/40 bg-green-900/20 text-green-300'}`}>
+          <div className={`mb-6 rounded-lg border px-4 py-3 text-sm ${actionError ? 'border-blue-500/40 bg-slate-800/40 text-slate-100' : 'border-blue-500/40 bg-slate-800/40 text-slate-100'}`}>
             {actionError || actionMessage}
           </div>
         )}
@@ -208,10 +208,10 @@ export default function Settings() {
           {settingsSections.map((section) => (
             <div
               key={section.title}
-              className="border border-slate-800 rounded-lg p-6 hover:border-purple-500/30 transition"
+              className="border border-slate-800 rounded-lg p-6 hover:border-blue-500/30 transition"
             >
               <div className="flex items-center gap-3 mb-4">
-                <section.icon className="w-5 h-5 text-purple-400" />
+                <section.icon className="w-5 h-5 text-blue-500" />
                 <h2 className="text-xl font-semibold">{section.title}</h2>
               </div>
 
@@ -236,7 +236,7 @@ export default function Settings() {
                         }
                         className={`relative w-12 h-6 rounded-full transition ${
                           settings[item.key]
-                            ? 'bg-gradient-to-r from-cyan-500 to-purple-500'
+                            ? 'bg-gradient-to-r from-blue-500 to-slate-700'
                             : 'bg-slate-700'
                         }`}
                       >
@@ -258,7 +258,7 @@ export default function Settings() {
                         }
                         className={`px-4 py-1.5 rounded text-sm font-medium transition ${
                           settings[item.key]
-                            ? 'bg-green-900/40 border border-green-500/30 text-green-400'
+                            ? 'bg-slate-800 border border-blue-500/30 text-slate-100'
                             : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
                         }`}
                       >
@@ -277,9 +277,9 @@ export default function Settings() {
             </div>
           ))}
 
-          <div className="border border-slate-800 rounded-lg p-6 hover:border-purple-500/30 transition">
+          <div className="border border-slate-800 rounded-lg p-6 hover:border-blue-500/30 transition">
             <div className="flex items-center gap-3 mb-4">
-              <Lock className="w-5 h-5 text-purple-400" />
+              <Lock className="w-5 h-5 text-blue-500" />
               <h2 className="text-xl font-semibold">Account</h2>
             </div>
 
@@ -312,7 +312,7 @@ export default function Settings() {
               <button
                 onClick={handleDeleteAccount}
                 disabled={isDeleting}
-                className="w-full px-4 py-2.5 bg-red-900/30 hover:bg-red-900/50 disabled:opacity-60 disabled:cursor-not-allowed border border-red-500/30 rounded text-sm font-medium transition text-left text-red-400 inline-flex items-center gap-2"
+                className="w-full px-4 py-2.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-60 disabled:cursor-not-allowed border border-slate-700 rounded text-sm font-medium transition text-left text-slate-200 inline-flex items-center gap-2"
               >
                 {isDeleting && <Loader className="w-4 h-4 animate-spin" />}
                 Delete Account
@@ -344,7 +344,7 @@ export default function Settings() {
                   type="password"
                   value={currentPassword}
                   onChange={(event) => setCurrentPassword(event.target.value)}
-                  className="w-full rounded border border-slate-700 bg-slate-800 px-3 py-2 text-slate-100 focus:border-purple-500 focus:outline-none"
+                  className="w-full rounded border border-slate-700 bg-slate-800 px-3 py-2 text-slate-100 focus:border-blue-500 focus:outline-none"
                   required
                 />
               </div>
@@ -355,7 +355,7 @@ export default function Settings() {
                   type="password"
                   value={newPassword}
                   onChange={(event) => setNewPassword(event.target.value)}
-                  className="w-full rounded border border-slate-700 bg-slate-800 px-3 py-2 text-slate-100 focus:border-purple-500 focus:outline-none"
+                  className="w-full rounded border border-slate-700 bg-slate-800 px-3 py-2 text-slate-100 focus:border-blue-500 focus:outline-none"
                   minLength={8}
                   required
                 />
@@ -364,7 +364,7 @@ export default function Settings() {
               <button
                 type="submit"
                 disabled={isSavingPassword}
-                className="w-full rounded bg-gradient-to-r from-cyan-500 to-purple-500 py-2 font-medium text-white hover:from-cyan-400 hover:to-purple-400 disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
+                className="w-full rounded bg-gradient-to-r from-blue-500 to-slate-700 py-2 font-medium text-white hover:from-blue-400 hover:to-slate-600 disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
               >
                 {isSavingPassword && <Loader className="w-4 h-4 animate-spin" />}
                 Update Password

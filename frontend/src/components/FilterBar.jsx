@@ -76,7 +76,7 @@ export default function FilterBar({ movies, onFilterChange, showRatingFilter = f
           onClick={() => setOpenDropdown(isOpen ? null : id)}
           className={`px-4 py-2 rounded-lg border transition-all text-sm font-medium flex items-center gap-2 ${
             value !== 'all' && value !== 'rating-desc'
-              ? 'bg-purple-500/20 border-purple-500/50 text-purple-300'
+              ? 'bg-blue-500/20 border-blue-500/50 text-slate-200'
               : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'
           }`}
         >
@@ -90,7 +90,7 @@ export default function FilterBar({ movies, onFilterChange, showRatingFilter = f
               <button
                 onClick={() => updateFilter(id, 'all')}
                 className={`w-full text-left px-4 py-2 text-sm transition hover:bg-slate-700 ${
-                  value === 'all' ? 'bg-slate-700 text-purple-400' : 'text-slate-300'
+                  value === 'all' ? 'bg-slate-700 text-blue-500' : 'text-slate-300'
                 }`}
               >
                 All
@@ -105,7 +105,7 @@ export default function FilterBar({ movies, onFilterChange, showRatingFilter = f
                   key={optionValue}
                   onClick={() => updateFilter(id, optionValue)}
                   className={`w-full text-left px-4 py-2 text-sm transition hover:bg-slate-700 ${
-                    value === optionValue ? 'bg-slate-700 text-purple-400' : 'text-slate-300'
+                    value === optionValue ? 'bg-slate-700 text-blue-500' : 'text-slate-300'
                   }`}
                 >
                   {optionLabel}
@@ -153,7 +153,7 @@ export default function FilterBar({ movies, onFilterChange, showRatingFilter = f
               onClick={() => setOpenDropdown(openDropdown === 'rating' ? null : 'rating')}
               className={`px-4 py-2 rounded-lg border transition-all text-sm font-medium flex items-center gap-2 ${
                 filters.ratingMin > 0 || filters.ratingMax < 10
-                  ? 'bg-purple-500/20 border-purple-500/50 text-purple-300'
+                  ? 'bg-blue-500/20 border-blue-500/50 text-slate-200'
                   : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'
               }`}
             >
@@ -173,7 +173,7 @@ export default function FilterBar({ movies, onFilterChange, showRatingFilter = f
                       step="0.5"
                       value={filters.ratingMin}
                       onChange={(e) => setFilters(prev => ({ ...prev, ratingMin: parseFloat(e.target.value) }))}
-                      className="w-full accent-purple-500"
+                      className="w-full accent-blue-500"
                     />
                     <div className="text-center text-sm text-slate-300 mt-1">{filters.ratingMin}</div>
                   </div>
@@ -186,7 +186,7 @@ export default function FilterBar({ movies, onFilterChange, showRatingFilter = f
                       step="0.5"
                       value={filters.ratingMax}
                       onChange={(e) => setFilters(prev => ({ ...prev, ratingMax: parseFloat(e.target.value) }))}
-                      className="w-full accent-purple-500"
+                      className="w-full accent-blue-500"
                     />
                     <div className="text-center text-sm text-slate-300 mt-1">{filters.ratingMax}</div>
                   </div>

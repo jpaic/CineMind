@@ -1,5 +1,72 @@
 @import "tailwindcss";
 
+:root {
+  --cm-bg: #0d0d14;
+  --cm-surface: #1f2833;
+  --cm-text: #f1e9da;
+  --cm-accent: #3b82f6;
+  --cm-accent-2: #2e294e;
+
+  --cm-scrollbar-track: color-mix(in srgb, var(--cm-surface) 35%, transparent);
+  --cm-scrollbar-thumb: color-mix(in srgb, var(--cm-accent) 40%, transparent);
+  --cm-scrollbar-thumb-2: color-mix(in srgb, var(--cm-accent-2) 55%, transparent);
+  --cm-scrollbar-thumb-hover: color-mix(in srgb, var(--cm-accent) 60%, transparent);
+  --cm-scrollbar-thumb-hover-2: color-mix(in srgb, var(--cm-accent-2) 75%, transparent);
+}
+
+@theme {
+  --color-slate-950: var(--cm-bg);
+  --color-slate-900: var(--cm-bg);
+  --color-slate-800: var(--cm-surface);
+  --color-slate-700: var(--cm-accent-2);
+  --color-slate-600: var(--cm-accent);
+  --color-slate-500: var(--cm-text);
+  --color-slate-400: var(--cm-text);
+  --color-slate-300: var(--cm-text);
+  --color-slate-200: var(--cm-text);
+  --color-slate-100: var(--cm-text);
+  --color-slate-50: var(--cm-text);
+
+  --color-gray-950: var(--cm-bg);
+  --color-gray-900: var(--cm-bg);
+  --color-gray-800: var(--cm-surface);
+  --color-gray-700: var(--cm-accent-2);
+  --color-gray-600: var(--cm-accent);
+  --color-gray-500: var(--cm-text);
+  --color-gray-400: var(--cm-text);
+  --color-gray-300: var(--cm-text);
+  --color-gray-200: var(--cm-text);
+  --color-gray-100: var(--cm-text);
+  --color-gray-50: var(--cm-text);
+
+  --color-blue-900: var(--cm-bg);
+  --color-blue-800: var(--cm-surface);
+  --color-blue-700: var(--cm-accent-2);
+  --color-blue-600: var(--cm-accent);
+  --color-blue-500: var(--cm-accent);
+  --color-blue-400: var(--cm-accent);
+  --color-blue-300: var(--cm-text);
+  --color-blue-200: var(--cm-text);
+  --color-blue-100: var(--cm-text);
+
+  --color-cyan-500: var(--cm-accent);
+  --color-cyan-400: var(--cm-accent);
+  --color-purple-500: var(--cm-accent-2);
+  --color-purple-400: var(--cm-accent-2);
+  --color-purple-300: var(--cm-text);
+  --color-red-900: var(--cm-accent-2);
+  --color-red-700: var(--cm-accent-2);
+  --color-red-500: var(--cm-accent);
+  --color-red-400: var(--cm-text);
+  --color-green-900: var(--cm-surface);
+  --color-green-500: var(--cm-accent);
+  --color-green-400: var(--cm-text);
+  --color-amber-500: var(--cm-accent);
+  --color-amber-400: var(--cm-accent);
+  --color-yellow-400: var(--cm-accent);
+  --color-orange-500: var(--cm-accent-2);
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -15,7 +82,7 @@
 
 .app-scroll {
   scrollbar-width: thin;
-  scrollbar-color: rgba(168, 85, 247, 0.4) rgba(15, 23, 42, 0.3);
+  scrollbar-color: var(--cm-scrollbar-thumb) var(--cm-scrollbar-track);
 }
 
 /* WebKit browsers */
@@ -24,15 +91,15 @@
 }
 
 .app-scroll::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.3);
+  background: var(--cm-scrollbar-track);
   border-radius: 10px;
 }
 
 .app-scroll::-webkit-scrollbar-thumb {
   background: linear-gradient(
     180deg,
-    rgba(34, 211, 238, 0.4),
-    rgba(168, 85, 247, 0.4)
+    var(--cm-scrollbar-thumb),
+    var(--cm-scrollbar-thumb-2)
   );
   border-radius: 10px;
 }
@@ -40,8 +107,8 @@
 .app-scroll::-webkit-scrollbar-thumb:hover {
   background: linear-gradient(
     180deg,
-    rgba(34, 211, 238, 0.6),
-    rgba(168, 85, 247, 0.6)
+    var(--cm-scrollbar-thumb-hover),
+    var(--cm-scrollbar-thumb-hover-2)
   );
 }
 
@@ -58,4 +125,3 @@
 .delay-200 {
   animation-delay: 0.2s;
 }
-

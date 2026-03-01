@@ -36,7 +36,7 @@ export default function UpcomingMovies() {
         <div className="mb-8">
           <button
             onClick={() => navigate('/home')}
-            className="flex items-center gap-2 text-slate-400 hover:text-purple-400 transition-colors mb-4 group"
+            className="flex items-center gap-2 text-slate-400 hover:text-blue-500 transition-colors mb-4 group"
           >
             <svg 
               className="w-5 h-5 group-hover:-translate-x-1 transition-transform" 
@@ -48,7 +48,7 @@ export default function UpcomingMovies() {
             </svg>
             Back to Home
           </button>
-          <h1 className="text-4xl font-bold mb-2 text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400">
+          <h1 className="text-4xl font-bold mb-2 text-slate-50">
             Upcoming Releases
           </h1>
           <p className="text-slate-400">Movies coming to theaters soon</p>

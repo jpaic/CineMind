@@ -144,7 +144,7 @@ export default function MovieDetails() {
       <div className="w-full h-screen overflow-hidden flex flex-col bg-slate-950">
         <Navbar loggedIn={true} />
         <div className="flex-1 flex items-center justify-center text-slate-50">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
         </div>
         <Footer />
       </div>
@@ -160,7 +160,7 @@ export default function MovieDetails() {
             <div className="max-w-7xl mx-auto">
               <button
                 onClick={() => navigate(-1)}
-                className="flex items-center gap-2 text-slate-400 hover:text-purple-400 transition mb-6"
+                className="flex items-center gap-2 text-slate-400 hover:text-blue-500 transition mb-6"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -219,7 +219,7 @@ export default function MovieDetails() {
             {/* Back Button */}
             <button
               onClick={() => navigate(-1)}
-              className="flex items-center gap-2 text-slate-400 hover:text-purple-400 transition mb-6 group"
+              className="flex items-center gap-2 text-slate-400 hover:text-blue-500 transition mb-6 group"
             >
               <svg className="w-5 h-5 group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -245,7 +245,7 @@ export default function MovieDetails() {
 
               {/* Details */}
               <div className="flex-1">
-                <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
+                <h1 className="text-4xl font-bold mb-2 text-slate-50">
                   {movie.title}
                 </h1>
                 
@@ -256,7 +256,7 @@ export default function MovieDetails() {
                 {/* Meta Info */}
                 <div className="flex flex-wrap gap-4 mb-6">
                   <div className="flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-purple-400" />
+                    <Calendar className="w-4 h-4 text-blue-500" />
                     <span className="text-sm">
                       {movie.release_date ? new Date(movie.release_date).getFullYear() : 'TBA'}
                     </span>
@@ -264,7 +264,7 @@ export default function MovieDetails() {
                   
                   {movie.runtime && (
                     <div className="flex items-center gap-2">
-                      <Clock className="w-4 h-4 text-purple-400" />
+                      <Clock className="w-4 h-4 text-blue-500" />
                       <span className="text-sm">{movie.runtime} min</span>
                     </div>
                   )}
@@ -283,7 +283,7 @@ export default function MovieDetails() {
                     {movie.genres.map(genre => (
                       <span
                         key={genre.id}
-                        className="px-3 py-1 bg-slate-800 border border-purple-500/30 rounded-full text-sm"
+                        className="px-3 py-1 bg-slate-800 border border-blue-500/30 rounded-full text-sm"
                       >
                         {genre.name}
                       </span>
@@ -300,7 +300,7 @@ export default function MovieDetails() {
                         e.stopPropagation();
                         navigate(getPersonUrl(director.id, director.name));
                       }}
-                      className="text-lg font-semibold text-purple-400 hover:text-purple-300 transition hover:underline"
+                      className="text-lg font-semibold text-blue-500 hover:text-slate-200 transition hover:underline"
                     >
                       {director.name}
                     </button>
@@ -346,7 +346,7 @@ export default function MovieDetails() {
                     <button
                       onClick={toggleWatchlist}
                       disabled={isTogglingWatchlist}
-                      className="inline-flex items-center gap-2 px-4 py-2 rounded-md border border-slate-700 bg-slate-800 hover:border-purple-400/60 hover:text-purple-300 transition disabled:opacity-60 disabled:cursor-not-allowed"
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-md border border-slate-700 bg-slate-800 hover:border-blue-500/60 hover:text-slate-200 transition disabled:opacity-60 disabled:cursor-not-allowed"
                     >
                       {isInWatchlist ? <BookmarkCheck className="w-4 h-4" /> : <Bookmark className="w-4 h-4" />}
                       {isInWatchlist ? 'In Watchlist' : 'Add to Watchlist'}
@@ -377,7 +377,7 @@ export default function MovieDetails() {
             {/* Cast */}
             {fullCast.length > 0 && (
               <div className="mt-12 mb-12">
-                <h2 className="text-2xl font-bold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400">
+                <h2 className="text-2xl font-bold mb-6 text-slate-50">
                   Cast
                 </h2>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
@@ -387,7 +387,7 @@ export default function MovieDetails() {
                       onClick={() => navigate(getPersonUrl(person.id, person.name))}
                       className="group text-left"
                     >
-                      <div className="aspect-[2/3] rounded-lg overflow-hidden bg-slate-900 ring-1 ring-slate-700 hover:ring-purple-400/50 transition-all mb-2 group-hover:scale-105">
+                      <div className="aspect-[2/3] rounded-lg overflow-hidden bg-slate-900 ring-1 ring-slate-700 hover:ring-blue-500/50 transition-all mb-2 group-hover:scale-105">
                         {person.profile_path ? (
                           <img
                             src={`${TMDB_IMAGE_BASE}/w500${person.profile_path}`}
@@ -402,7 +402,7 @@ export default function MovieDetails() {
                           </div>
                         )}
                       </div>
-                      <h4 className="font-semibold text-sm group-hover:text-purple-400 transition truncate">
+                      <h4 className="font-semibold text-sm group-hover:text-blue-500 transition truncate">
                         {person.name}
                       </h4>
                       <p className="text-xs text-slate-500 truncate">{person.character}</p>
