@@ -1,5 +1,58 @@
 @import "tailwindcss";
 
+@theme {
+  --color-slate-950: #0d0d14;
+  --color-slate-900: #0d0d14;
+  --color-slate-800: #1f2833;
+  --color-slate-700: #2e294e;
+  --color-slate-600: #3b82f6;
+  --color-slate-500: #f1e9da;
+  --color-slate-400: #f1e9da;
+  --color-slate-300: #f1e9da;
+  --color-slate-200: #f1e9da;
+  --color-slate-100: #f1e9da;
+  --color-slate-50: #f1e9da;
+
+  --color-gray-950: #0d0d14;
+  --color-gray-900: #0d0d14;
+  --color-gray-800: #1f2833;
+  --color-gray-700: #2e294e;
+  --color-gray-600: #3b82f6;
+  --color-gray-500: #f1e9da;
+  --color-gray-400: #f1e9da;
+  --color-gray-300: #f1e9da;
+  --color-gray-200: #f1e9da;
+  --color-gray-100: #f1e9da;
+  --color-gray-50: #f1e9da;
+
+  --color-blue-900: #0d0d14;
+  --color-blue-800: #1f2833;
+  --color-blue-700: #2e294e;
+  --color-blue-600: #3b82f6;
+  --color-blue-500: #3b82f6;
+  --color-blue-400: #3b82f6;
+  --color-blue-300: #f1e9da;
+  --color-blue-200: #f1e9da;
+  --color-blue-100: #f1e9da;
+
+  --color-cyan-500: #3b82f6;
+  --color-cyan-400: #3b82f6;
+  --color-purple-500: #2e294e;
+  --color-purple-400: #2e294e;
+  --color-purple-300: #f1e9da;
+  --color-red-900: #2e294e;
+  --color-red-700: #2e294e;
+  --color-red-500: #3b82f6;
+  --color-red-400: #f1e9da;
+  --color-green-900: #1f2833;
+  --color-green-500: #3b82f6;
+  --color-green-400: #f1e9da;
+  --color-amber-500: #3b82f6;
+  --color-amber-400: #3b82f6;
+  --color-yellow-400: #3b82f6;
+  --color-orange-500: #2e294e;
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -15,7 +68,7 @@
 
 .app-scroll {
   scrollbar-width: thin;
-  scrollbar-color: rgba(168, 85, 247, 0.4) rgba(15, 23, 42, 0.3);
+  scrollbar-color: color-mix(in srgb, #3b82f6 40%, transparent) color-mix(in srgb, #1f2833 35%, transparent);
 }
 
 /* WebKit browsers */
@@ -24,15 +77,15 @@
 }
 
 .app-scroll::-webkit-scrollbar-track {
-  background: rgba(15, 23, 42, 0.3);
+  background: color-mix(in srgb, #1f2833 35%, transparent);
   border-radius: 10px;
 }
 
 .app-scroll::-webkit-scrollbar-thumb {
   background: linear-gradient(
     180deg,
-    rgba(34, 211, 238, 0.4),
-    rgba(168, 85, 247, 0.4)
+    color-mix(in srgb, #3b82f6 40%, transparent),
+    color-mix(in srgb, #2e294e 55%, transparent)
   );
   border-radius: 10px;
 }
@@ -40,8 +93,8 @@
 .app-scroll::-webkit-scrollbar-thumb:hover {
   background: linear-gradient(
     180deg,
-    rgba(34, 211, 238, 0.6),
-    rgba(168, 85, 247, 0.6)
+    color-mix(in srgb, #3b82f6 60%, transparent),
+    color-mix(in srgb, #2e294e 75%, transparent)
   );
 }
 
@@ -58,4 +111,3 @@
 .delay-200 {
   animation-delay: 0.2s;
 }
-

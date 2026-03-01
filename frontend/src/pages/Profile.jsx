@@ -119,7 +119,7 @@ export default function Profile() {
     name: username,
     bio: "Film enthusiast and Christopher Nolan superfan. Love sci-fi, thrillers, and anything that makes me think.",
     favoriteGenres: ["Sci-Fi", "Thriller", "Drama"],
-    profilePicture: `https://ui-avatars.com/api/?name=${encodeURIComponent(username)}&size=200&background=1f2937&color=d4af37`,
+    profilePicture: `https://ui-avatars.com/api/?name=${encodeURIComponent(username)}&size=200&background=1f2833&color=f1e9da`,
     headerImage: "https://image.tmdb.org/t/p/original/jOzrELAzFxtMx2I4uDGHOotdfsS.jpg",
   };
 
