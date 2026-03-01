@@ -2,37 +2,40 @@ import React, { useState, useMemo, useEffect } from 'react';
 
 const FilmStripRow = ({ delay, index }) => {
   const colors = [
-    'from-slate-800 via-slate-700 to-slate-800',
-    'from-slate-800 via-slate-600 to-slate-800',
-    'from-gray-800 via-gray-700 to-gray-800',
-    'from-slate-700 via-slate-600 to-slate-700',
-    'from-gray-800 via-slate-700 to-gray-800',
+    { from: '#1e293b', via: '#334155', to: '#1e293b' },
+    { from: '#1e293b', via: '#475569', to: '#1e293b' },
+    { from: '#1f2937', via: '#374151', to: '#1f2937' },
+    { from: '#334155', via: '#475569', to: '#334155' },
+    { from: '#1f2937', via: '#334155', to: '#1f2937' },
   ];
-  
+
   const tints = [
-    'bg-orange-500/5',
-    'bg-blue-500/5',
-    'bg-blue-500/5',
-    'bg-amber-500/5',
-    'bg-cyan-500/5',
+    'rgba(249,115,22,0.05)',
+    'rgba(59,130,246,0.05)',
+    'rgba(34,197,94,0.05)',
+    'rgba(245,158,11,0.05)',
+    'rgba(6,182,212,0.05)',
   ];
-  
-  const colorClass = colors[index % colors.length];
-  const tintClass = tints[index % tints.length];
+
+  const colorStyle = colors[index % colors.length];
+  const tintColor = tints[index % tints.length];
   
   return (
     <div className="film-strip" style={{ animationDelay: `${delay}ms` }}>
-      <div className={`absolute inset-0 ${tintClass}`} />
+      <div className="absolute inset-0" style={{ backgroundColor: tintColor }} />
 
       {/* Top sprockets */}
-      <div className="flex absolute top-0 left-0 right-0 h-3 gap-4 bg-slate-900 overflow-hidden">
+      <div className="flex absolute top-0 left-0 right-0 h-3 gap-4 overflow-hidden" style={{ backgroundColor: '#0f172a' }}>
         {[...Array(100)].map((_, i) => (
-          <div key={`top-${i}`} className="w-2 h-2 bg-slate-950 rounded-full mt-0.5 flex-shrink-0" />
+          <div key={`top-${i}`} className="w-2 h-2 rounded-full mt-0.5 flex-shrink-0" style={{ backgroundColor: '#020617' }} />
         ))}
       </div>
 
       {/* Film frame */}
-      <div className={`absolute inset-0 top-3 bottom-3 bg-gradient-to-r ${colorClass}`}>
+      <div
+        className="absolute inset-0 top-3 bottom-3"
+        style={{ background: `linear-gradient(to right, ${colorStyle.from}, ${colorStyle.via}, ${colorStyle.to})` }}
+      >
         <div className="absolute inset-0 film-grain opacity-20" />
         <div className="absolute inset-0 overflow-hidden">
           <div className="film-scratch" style={{ left: `${20 + index * 15}%` }} />
@@ -42,9 +45,9 @@ const FilmStripRow = ({ delay, index }) => {
       </div>
 
       {/* Bottom sprockets */}
-      <div className="flex absolute bottom-0 left-0 right-0 h-3 gap-4 bg-slate-900 overflow-hidden">
+      <div className="flex absolute bottom-0 left-0 right-0 h-3 gap-4 overflow-hidden" style={{ backgroundColor: '#0f172a' }}>
         {[...Array(100)].map((_, i) => (
-          <div key={`bottom-${i}`} className="w-2 h-2 bg-slate-950 rounded-full mt-0.5 flex-shrink-0" />
+          <div key={`bottom-${i}`} className="w-2 h-2 rounded-full mt-0.5 flex-shrink-0" style={{ backgroundColor: '#020617' }} />
         ))}
       </div>
     </div>
@@ -107,9 +110,9 @@ export default function FilmTransition({ onComplete }) {
 
         /* Film grain */
         .film-grain {
-          background-image: 
-            repeating-linear-gradient(0deg, transparent, transparent 2px, color-mix(in srgb, var(--cm-bg) 20%, transparent) 2px, color-mix(in srgb, var(--cm-bg) 20%, transparent) 4px),
-            repeating-linear-gradient(90deg, transparent, transparent 2px, color-mix(in srgb, var(--cm-bg) 20%, transparent) 2px, color-mix(in srgb, var(--cm-bg) 20%, transparent) 4px);
+          background-image:
+            repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,.12) 2px, rgba(0,0,0,.12) 4px),
+            repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(0,0,0,.12) 2px, rgba(0,0,0,.12) 4px);
           animation: grainShift 0.08s steps(1) infinite;
         }
 
@@ -123,20 +126,20 @@ export default function FilmTransition({ onComplete }) {
           top: 0;
           bottom: 0;
           width: 1px;
-          background: linear-gradient(to bottom, 
-            transparent 0%, 
-            color-mix(in srgb, var(--cm-text) 10%, transparent) 10%,
+          background: linear-gradient(to bottom,
+            transparent 0%,
+            rgba(255, 255, 255, 0.1) 10%,
             transparent 30%,
-            color-mix(in srgb, var(--cm-text) 10%, transparent) 50%,
+            rgba(255, 255, 255, 0.1) 50%,
             transparent 70%,
-            color-mix(in srgb, var(--cm-accent) 15%, transparent) 85%,
+            rgba(255, 255, 255, 0.12) 85%,
             transparent 100%
           );
           opacity: 0.4;
         }
 
         .vignette {
-          background: radial-gradient(ellipse at center, transparent 30%, color-mix(in srgb, var(--cm-bg) 45%, transparent) 100%);
+          background: radial-gradient(ellipse at center, transparent 30%, rgba(0,0,0,0.3) 100%);
         }
       `}</style>
 
