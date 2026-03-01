@@ -61,7 +61,7 @@ export default function PersonDetails() {
       <div className="w-full h-screen overflow-hidden flex flex-col bg-slate-950">
         <Navbar loggedIn={true} />
         <div className="flex-1 flex items-center justify-center text-slate-50">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+          <div className="cm-spinner animate-spin rounded-full h-12 w-12"></div>
         </div>
         <Footer />
       </div>

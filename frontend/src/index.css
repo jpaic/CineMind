@@ -5,7 +5,8 @@
   --cm-surface: #1f2833;
   --cm-text: #f1e9da;
   --cm-accent: #3b82f6;
-  --cm-accent-2: #2e294e;
+  --cm-accent-2: #3A4A5F;
+  --cm-accent-3: #FDD421;
 
   --cm-scrollbar-track: color-mix(in srgb, var(--cm-surface) 35%, transparent);
   --cm-scrollbar-thumb: color-mix(in srgb, var(--cm-accent) 40%, transparent);
@@ -61,9 +62,9 @@
   --color-green-900: var(--cm-surface);
   --color-green-500: var(--cm-accent);
   --color-green-400: var(--cm-text);
-  --color-amber-500: var(--cm-accent);
-  --color-amber-400: var(--cm-accent);
-  --color-yellow-400: var(--cm-accent);
+  --color-amber-500: var(--cm-accent-3);
+  --color-amber-400: var(--cm-accent-3);
+  --color-yellow-400: var(--cm-accent-3);
   --color-orange-500: var(--cm-accent-2);
 }
 
@@ -113,6 +114,12 @@
 }
 
 
+
+::selection {
+  background: color-mix(in srgb, var(--cm-accent) 35%, transparent);
+  color: var(--cm-text);
+}
+
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(20px); }
   to { opacity: 1; transform: translateY(0); }
@@ -124,4 +131,9 @@
 
 .delay-200 {
   animation-delay: 0.2s;
+}
+
+.cm-spinner {
+  border: 3px solid color-mix(in srgb, var(--cm-accent-2) 50%, transparent);
+  border-top-color: var(--cm-accent);
 }

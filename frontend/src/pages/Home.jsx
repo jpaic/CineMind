@@ -322,7 +322,7 @@ export default function Home({ onLogout }) {
                     Featured Talent
                   </h2>
                   <div className="relative overflow-visible">
-                    <div className="flex gap-6 overflow-x-auto pb-6 pt-2 snap-x snap-mandatory talent-scroll">
+                    <div className="flex gap-6 overflow-x-auto pb-6 pt-2 pl-2 snap-x snap-mandatory talent-scroll">
                       {featuredPeople.length === 0 ? (
                         <p className="text-slate-400">No featured talent available</p>
                       ) : (
