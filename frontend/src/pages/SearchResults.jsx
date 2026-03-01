@@ -97,7 +97,7 @@ export default function SearchResults() {
       
       <div className="flex-1 overflow-y-auto" style={{
         scrollbarWidth: 'thin',
-        scrollbarColor: 'rgba(59, 130, 246, 0.4) rgba(31, 40, 51, 0.35)'
+        scrollbarColor: 'var(--cm-scrollbar-thumb) var(--cm-scrollbar-track)'
       }}>
         <div className="min-h-full text-slate-50 px-6 py-12">
           <div className="max-w-7xl mx-auto">
@@ -105,7 +105,7 @@ export default function SearchResults() {
             <div className="mb-8">
               <button
                 onClick={() => navigate(-1)}
-                className="flex items-center gap-2 text-slate-400 hover:text-purple-400 transition mb-4 group"
+                className="flex items-center gap-2 text-slate-400 hover:text-blue-500 transition mb-4 group"
               >
                 <svg className="w-5 h-5 group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -114,8 +114,8 @@ export default function SearchResults() {
               </button>
               
               <div className="flex items-center gap-3 mb-2">
-                <Search className="w-8 h-8 text-purple-400" />
-                <h1 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400">
+                <Search className="w-8 h-8 text-blue-500" />
+                <h1 className="text-4xl font-bold text-slate-50">
                   Search Results
                 </h1>
               </div>
@@ -127,7 +127,7 @@ export default function SearchResults() {
             {/* Loading State */}
             {loading && (
               <div className="flex items-center justify-center py-20">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
               </div>
             )}
 
@@ -145,7 +145,7 @@ export default function SearchResults() {
                   <button
                     key={`${result.type}-${result.id}`}
                     onClick={() => handleResultClick(result)}
-                    className="flex gap-4 border border-slate-800 rounded-lg p-4 hover:border-purple-400/50 hover:bg-slate-900/50 transition group text-left"
+                    className="flex gap-4 border border-slate-800 rounded-lg p-4 hover:border-blue-500/50 hover:bg-slate-900/50 transition group text-left"
                   >
                     {/* Poster/Profile Image */}
                     <div className="flex-shrink-0">
@@ -153,7 +153,7 @@ export default function SearchResults() {
                         <img
                           src={result.poster}
                           alt={result.title || result.name}
-                          className="w-24 h-36 object-cover rounded ring-1 ring-slate-700 group-hover:ring-purple-400/50 transition"
+                          className="w-24 h-36 object-cover rounded ring-1 ring-slate-700 group-hover:ring-blue-500/50 transition"
                         />
                       ) : (
                         <div className="w-24 h-36 bg-slate-700 rounded flex items-center justify-center">
@@ -166,11 +166,11 @@ export default function SearchResults() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-4 mb-2">
                         <div className="flex-1 min-w-0">
-                          <h3 className="text-xl font-bold text-slate-50 group-hover:text-purple-400 transition mb-1">
+                          <h3 className="text-xl font-bold text-slate-50 group-hover:text-blue-500 transition mb-1">
                             {result.type === 'movie' ? result.title : result.name}
                           </h3>
                           <div className="flex items-center gap-2 text-sm text-slate-400">
-                            <span className="px-2 py-0.5 bg-purple-500/20 border border-purple-500/30 rounded text-xs text-purple-300">
+                            <span className="px-2 py-0.5 bg-blue-500/20 border border-blue-500/30 rounded text-xs text-slate-200">
                               {result.type === 'movie' ? 'Movie' : 'Person'}
                             </span>
                             {result.type === 'movie' && result.year && (
@@ -237,18 +237,18 @@ export default function SearchResults() {
         }
 
         div::-webkit-scrollbar-track {
-          background: rgba(31, 40, 51, 0.35);
+          background: color-mix(in srgb, var(--cm-surface) 35%, transparent);
           border-radius: 10px;
         }
 
         div::-webkit-scrollbar-thumb {
-          background: linear-gradient(180deg, rgba(59, 130, 246, 0.45), rgba(46, 41, 78, 0.55));
+          background: linear-gradient(180deg, color-mix(in srgb, var(--cm-accent) 45%, transparent), color-mix(in srgb, var(--cm-accent-2) 55%, transparent));
           border-radius: 10px;
           transition: background 0.3s ease;
         }
 
         div::-webkit-scrollbar-thumb:hover {
-          background: linear-gradient(180deg, rgba(59, 130, 246, 0.65), rgba(46, 41, 78, 0.8));
+          background: linear-gradient(180deg, color-mix(in srgb, var(--cm-accent) 65%, transparent), color-mix(in srgb, var(--cm-accent-2) 80%, transparent));
         }
       `}</style>
     </div>

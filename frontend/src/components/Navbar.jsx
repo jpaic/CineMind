@@ -147,7 +147,7 @@ export default function Navbar({ loggedIn, onLogout, onStartTransition, onNaviga
                   placeholder="Search..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-64 pl-9 pr-9 py-1.5 rounded-lg bg-slate-800 text-slate-50 text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500/50 border border-slate-700 transition-all"
+                  className="w-64 pl-9 pr-9 py-1.5 rounded-lg bg-slate-800 text-slate-50 text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 border border-slate-700 transition-all"
                 />
                 {searchQuery && (
                   <button
@@ -265,7 +265,7 @@ export default function Navbar({ loggedIn, onLogout, onStartTransition, onNaviga
                   placeholder="Search..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-11 pr-9 py-2 rounded-lg bg-slate-800 text-slate-50 text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500/50 border border-slate-700 transition-all"
+                  className="w-full pl-11 pr-9 py-2 rounded-lg bg-slate-800 text-slate-50 text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 border border-slate-700 transition-all"
                 />
                 {searchQuery && (
                   <button

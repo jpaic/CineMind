@@ -67,17 +67,17 @@ export default function FilmReelLoading({ isVisible, message = "Loading...", blo
           
           <style>{`
             @keyframes holeFillEmpty {
-              0% { background-color: rgba(13, 13, 20, 0.7); }
-              3% { background-color: rgba(13, 13, 20, 0.6); }
-              6% { background-color: rgba(31, 40, 51, 0.4); }
-              9% { background-color: rgba(46, 41, 78, 0.2); }
+              0% { background-color: color-mix(in srgb, var(--cm-bg) 70%, transparent); }
+              3% { background-color: color-mix(in srgb, var(--cm-bg) 60%, transparent); }
+              6% { background-color: color-mix(in srgb, var(--cm-surface) 40%, transparent); }
+              9% { background-color: color-mix(in srgb, var(--cm-accent-2) 20%, transparent); }
               12% { background-color: transparent; }
               38% { background-color: transparent; }
-              41% { background-color: rgba(46, 41, 78, 0.2); }
-              44% { background-color: rgba(31, 40, 51, 0.4); }
-              47% { background-color: rgba(13, 13, 20, 0.6); }
-              50% { background-color: rgba(13, 13, 20, 0.7); }
-              100% { background-color: rgba(13, 13, 20, 0.7); }
+              41% { background-color: color-mix(in srgb, var(--cm-accent-2) 20%, transparent); }
+              44% { background-color: color-mix(in srgb, var(--cm-surface) 40%, transparent); }
+              47% { background-color: color-mix(in srgb, var(--cm-bg) 60%, transparent); }
+              50% { background-color: color-mix(in srgb, var(--cm-bg) 70%, transparent); }
+              100% { background-color: color-mix(in srgb, var(--cm-bg) 70%, transparent); }
             }
           `}</style>
         </div>

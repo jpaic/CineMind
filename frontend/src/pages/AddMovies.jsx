@@ -265,7 +265,7 @@ export default function AddMovies({ onMovieAdded }) {
 
           <button
             onClick={() => setIsOpen(true)}
-            className="w-50 max-w-md px-6 py-2.5 bg-gradient-to-r from-cyan-500 to-purple-500 hover:from-cyan-400 hover:to-purple-400 rounded font-medium text-sm transition-all duration-150 shadow-lg shadow-purple-500/20 hover:scale-105 active:scale-95"
+            className="w-50 max-w-md px-6 py-2.5 bg-blue-500 hover:bg-blue-600 rounded font-medium text-sm transition-all duration-150 shadow-lg shadow-blue-500/20 hover:scale-105 active:scale-95"
           >
             + Add a Film
           </button>
@@ -278,7 +278,7 @@ export default function AddMovies({ onMovieAdded }) {
               onChange={handleCsvImport}
               disabled={isImporting}
             />
-            <div className="w-50 px-6 py-2.5 bg-gradient-to-r from-green-500 to-lime-400 hover:from-green-400 hover:to-lime-300 rounded font-medium text-sm text-slate-50 transition-all duration-150 shadow-lg shadow-green-500/20 hover:scale-105 active:scale-95 text-center inline-flex items-center justify-center gap-2">
+            <div className="w-50 px-6 py-2.5 bg-blue-500 hover:bg-blue-600 rounded font-medium text-sm text-slate-50 transition-all duration-150 shadow-lg shadow-blue-500/20 hover:scale-105 active:scale-95 text-center inline-flex items-center justify-center gap-2">
               {isImporting ? <Loader className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
               {isImporting ? 'Importing…' : 'Import from CSV'}
             </div>
@@ -307,7 +307,7 @@ export default function AddMovies({ onMovieAdded }) {
                       placeholder="Search for a movie..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full pl-10 pr-4 py-3 rounded bg-slate-800 text-slate-50 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500/50 border border-slate-700 transition-all"
+                      className="w-full pl-10 pr-4 py-3 rounded bg-slate-800 text-slate-50 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 border border-slate-700 transition-all"
                       autoFocus
                     />
                     {isSearching && <Loader className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-500 w-4 h-4 animate-spin" />}
@@ -318,7 +318,7 @@ export default function AddMovies({ onMovieAdded }) {
                       <div
                         key={movie.id}
                         onClick={() => handleMovieSelect(movie)}
-                        className="flex items-center gap-3 p-2 rounded border border-slate-800 hover:border-purple-400/50 hover:bg-slate-800/50 cursor-pointer transition-all duration-150 hover:scale-[1.01] active:scale-[0.99]"
+                        className="flex items-center gap-3 p-2 rounded border border-slate-800 hover:border-blue-500/50 hover:bg-slate-800/50 cursor-pointer transition-all duration-150 hover:scale-[1.01] active:scale-[0.99]"
                       >
                         {movie.poster ? (
                           <img src={movie.poster} alt={movie.title} className="w-12 h-16 object-cover rounded" />
@@ -394,7 +394,7 @@ export default function AddMovies({ onMovieAdded }) {
                   <button
                     onClick={handleAddMovie}
                     disabled={rating === 0 || isAdding}
-                    className="w-full bg-gradient-to-r from-cyan-500 to-purple-500 hover:from-cyan-400 hover:to-purple-400 disabled:from-slate-700 disabled:to-slate-700 disabled:opacity-50 disabled:cursor-not-allowed py-3 rounded font-medium text-base transition-all duration-150 shadow-lg shadow-purple-500/20 mt-2 hover:scale-[1.01] active:scale-[0.99] flex items-center justify-center gap-2"
+                    className="w-full bg-blue-500 hover:bg-blue-600 disabled:from-slate-700 disabled:to-slate-700 disabled:opacity-50 disabled:cursor-not-allowed py-3 rounded font-medium text-base transition-all duration-150 shadow-lg shadow-blue-500/20 mt-2 hover:scale-[1.01] active:scale-[0.99] flex items-center justify-center gap-2"
                   >
                     {isAdding ? (
                       <>

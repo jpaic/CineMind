@@ -12,7 +12,7 @@ const FilmStripRow = ({ delay, index }) => {
   const tints = [
     'bg-orange-500/5',
     'bg-blue-500/5',
-    'bg-green-500/5',
+    'bg-blue-500/5',
     'bg-amber-500/5',
     'bg-cyan-500/5',
   ];
@@ -108,8 +108,8 @@ export default function FilmTransition({ onComplete }) {
         /* Film grain */
         .film-grain {
           background-image: 
-            repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(13, 13, 20, 0.2) 2px, rgba(13, 13, 20, 0.2) 4px),
-            repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(13, 13, 20, 0.2) 2px, rgba(13, 13, 20, 0.2) 4px);
+            repeating-linear-gradient(0deg, transparent, transparent 2px, color-mix(in srgb, var(--cm-bg) 20%, transparent) 2px, color-mix(in srgb, var(--cm-bg) 20%, transparent) 4px),
+            repeating-linear-gradient(90deg, transparent, transparent 2px, color-mix(in srgb, var(--cm-bg) 20%, transparent) 2px, color-mix(in srgb, var(--cm-bg) 20%, transparent) 4px);
           animation: grainShift 0.08s steps(1) infinite;
         }
 
@@ -125,18 +125,18 @@ export default function FilmTransition({ onComplete }) {
           width: 1px;
           background: linear-gradient(to bottom, 
             transparent 0%, 
-            rgba(241, 233, 218, 0.1) 10%,
+            color-mix(in srgb, var(--cm-text) 10%, transparent) 10%,
             transparent 30%,
-            rgba(241, 233, 218, 0.1) 50%,
+            color-mix(in srgb, var(--cm-text) 10%, transparent) 50%,
             transparent 70%,
-            rgba(59, 130, 246, 0.15) 85%,
+            color-mix(in srgb, var(--cm-accent) 15%, transparent) 85%,
             transparent 100%
           );
           opacity: 0.4;
         }
 
         .vignette {
-          background: radial-gradient(ellipse at center, transparent 30%, rgba(13, 13, 20, 0.45) 100%);
+          background: radial-gradient(ellipse at center, transparent 30%, color-mix(in srgb, var(--cm-bg) 45%, transparent) 100%);
         }
       `}</style>
 

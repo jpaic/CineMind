@@ -149,7 +149,7 @@ export default function Watchlist() {
           <p className="text-red-400 mb-4">{error}</p>
           <button
             onClick={handleRefresh}
-            className="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded text-sm transition"
+            className="px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded text-sm transition"
           >
             Try Again
           </button>
