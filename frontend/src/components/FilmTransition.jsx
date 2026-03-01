@@ -108,8 +108,8 @@ export default function FilmTransition({ onComplete }) {
         /* Film grain */
         .film-grain {
           background-image: 
-            repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,.12) 2px, rgba(0,0,0,.12) 4px),
-            repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(0,0,0,.12) 2px, rgba(0,0,0,.12) 4px);
+            repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(13, 13, 20, 0.2) 2px, rgba(13, 13, 20, 0.2) 4px),
+            repeating-linear-gradient(90deg, transparent, transparent 2px, rgba(13, 13, 20, 0.2) 2px, rgba(13, 13, 20, 0.2) 4px);
           animation: grainShift 0.08s steps(1) infinite;
         }
 
@@ -125,18 +125,18 @@ export default function FilmTransition({ onComplete }) {
           width: 1px;
           background: linear-gradient(to bottom, 
             transparent 0%, 
-            rgba(255, 255, 255, 0.1) 10%,
+            rgba(241, 233, 218, 0.1) 10%,
             transparent 30%,
-            rgba(255, 255, 255, 0.1) 50%,
+            rgba(241, 233, 218, 0.1) 50%,
             transparent 70%,
-            rgba(255, 255, 255, 0.12) 85%,
+            rgba(59, 130, 246, 0.15) 85%,
             transparent 100%
           );
           opacity: 0.4;
         }
 
         .vignette {
-          background: radial-gradient(ellipse at center, transparent 30%, rgba(0,0,0,0.3) 100%);
+          background: radial-gradient(ellipse at center, transparent 30%, rgba(13, 13, 20, 0.45) 100%);
         }
       `}</style>
 

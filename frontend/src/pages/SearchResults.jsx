@@ -97,7 +97,7 @@ export default function SearchResults() {
       
       <div className="flex-1 overflow-y-auto" style={{
         scrollbarWidth: 'thin',
-        scrollbarColor: 'rgba(168, 85, 247, 0.4) rgba(15, 23, 42, 0.3)'
+        scrollbarColor: 'rgba(59, 130, 246, 0.4) rgba(31, 40, 51, 0.35)'
       }}>
         <div className="min-h-full text-slate-50 px-6 py-12">
           <div className="max-w-7xl mx-auto">
@@ -237,18 +237,18 @@ export default function SearchResults() {
         }
 
         div::-webkit-scrollbar-track {
-          background: rgba(15, 23, 42, 0.3);
+          background: rgba(31, 40, 51, 0.35);
           border-radius: 10px;
         }
 
         div::-webkit-scrollbar-thumb {
-          background: linear-gradient(180deg, rgba(34, 211, 238, 0.4), rgba(168, 85, 247, 0.4));
+          background: linear-gradient(180deg, rgba(59, 130, 246, 0.45), rgba(46, 41, 78, 0.55));
           border-radius: 10px;
           transition: background 0.3s ease;
         }
 
         div::-webkit-scrollbar-thumb:hover {
-          background: linear-gradient(180deg, rgba(34, 211, 238, 0.6), rgba(168, 85, 247, 0.6));
+          background: linear-gradient(180deg, rgba(59, 130, 246, 0.65), rgba(46, 41, 78, 0.8));
         }
       `}</style>
     </div>
