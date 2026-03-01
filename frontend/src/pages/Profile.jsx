@@ -60,18 +60,12 @@ export default function Profile() {
 
       let tmdbDetails = [];
       if (uncachedIds.length > 0) {
-        // Fetch all uncached movies from TMDB
         tmdbDetails = await tmdbService.getMoviesDetails(uncachedIds);
         
-        // Batch cache all newly fetched movies (don't await individual calls)
         const cachePromises = tmdbDetails.map(movie => 
-          movieApi.cacheMovie(movie).catch(err => {
-          })
+          movieApi.cacheMovie(movie).catch(err => {})
         );
-        
-        // Fire and forget - don't block on caching
-        Promise.all(cachePromises).catch(err => {
-        });
+        Promise.all(cachePromises).catch(err => {});
       }
 
       // Combine cached and TMDB data
@@ -95,10 +89,7 @@ export default function Profile() {
 
       setUserLibrary(enrichedMovies);
 
-      // Initialize showcase array
       const newShowcase = [null, null, null, null];
-      
-      // Fill showcase with movies from backend (positions already converted to 0-3 by API)
       for (const item of showcaseItems) {
         if (item.position >= 0 && item.position <= 3) {
           const movie = enrichedMovies.find(m => m.id === item.movie_id);
@@ -132,13 +123,10 @@ export default function Profile() {
     avgRating: userLibrary.length > 0 
       ? (userLibrary.reduce((sum, m) => sum + m.rating, 0) / userLibrary.length).toFixed(1)
       : 0,
-    favoriteDirector: "Christopher Nolan", // TODO: Calculate from library
+    favoriteDirector: "Christopher Nolan",
   };
 
-  // Get movies already in showcase
   const showcaseMovieIds = showcase.filter(m => m !== null).map(m => m.id);
-
-  // Filter out movies already in showcase
   const availableMovies = userLibrary.filter(movie => !showcaseMovieIds.includes(movie.id));
 
   const searchResults = searchQuery.length
@@ -165,7 +153,6 @@ export default function Profile() {
 
   const handleAddToShowcase = async (movie) => {
     try {
-      // Verify movie is in user's library
       if (!userLibrary.find(m => m.id === movie.id)) {
         alert('This movie is not in your library. Please rate it first.');
         return;
@@ -174,7 +161,6 @@ export default function Profile() {
       await new Promise(resolve => setTimeout(resolve, 100));
       await movieApi.setShowcasePosition(currentShowcaseIndex, movie.id);
       
-      // Update local state
       const newShowcase = [...showcase];
       newShowcase[currentShowcaseIndex] = movie;
       setShowcase(newShowcase);
@@ -189,8 +175,6 @@ export default function Profile() {
   const handleRemoveFromShowcase = async (index) => {
     try {
       await movieApi.removeShowcasePosition(index);
-      
-      // Update local state
       const newShowcase = [...showcase];
       newShowcase[index] = null;
       setShowcase(newShowcase);
@@ -201,19 +185,59 @@ export default function Profile() {
 
   if (loading) {
     return (
-      <div className="flex flex-col w-full bg-slate-950 text-slate-50 min-h-screen relative">
+      <>
         <FilmReelLoading isVisible={true} message="Loading your profile..." blocking={false} />
-        
-        {/* Skeleton content */}
-        <div className="w-full h-32 sm:h-40 md:h-48 overflow-hidden relative bg-slate-900"></div>
-        <div className="max-w-7xl mx-auto px-6 py-6">
-          <div className="flex flex-col md:flex-row gap-6">
-            <div className="flex-shrink-0 w-full md:w-1/3">
-              <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-lg bg-slate-800 animate-pulse"></div>
+
+        {/* Header */}
+        <div className="w-full h-32 sm:h-40 md:h-48 overflow-hidden relative">
+          <div className="w-full h-full bg-slate-900" />
+          <div className="absolute inset-0 bg-gradient-to-b from-slate-950/20 to-slate-950" />
+        </div>
+
+        {/* Main content */}
+        <div className="max-w-7xl mx-auto px-6 py-6 flex flex-col md:flex-row gap-6 items-start">
+
+          {/* Left column */}
+          <div className="flex-shrink-0 w-full md:w-1/3 flex flex-col gap-4">
+            <div className="flex flex-col items-center md:items-start gap-2">
+              <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-lg bg-slate-800 ring-2 ring-slate-700" />
+              <div className="h-8 sm:h-9 w-40 rounded bg-slate-800" />
+              <div className="w-full space-y-2">
+                <div className="h-3.5 w-full rounded bg-slate-800" />
+                <div className="h-3.5 w-5/6 rounded bg-slate-800" />
+                <div className="h-3.5 w-4/5 rounded bg-slate-800" />
+                <div className="h-3.5 w-3/5 rounded bg-slate-800" />
+              </div>
+              <div className="flex flex-wrap gap-1 justify-center md:justify-start">
+                <div className="h-6 w-14 rounded bg-slate-800 border border-slate-700" />
+                <div className="h-6 w-16 rounded bg-slate-800 border border-slate-700" />
+                <div className="h-6 w-12 rounded bg-slate-800 border border-slate-700" />
+              </div>
+            </div>
+
+            <div className="space-y-2 mt-2">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="border border-slate-800 rounded p-3">
+                  <div className="h-2.5 w-24 rounded bg-slate-800 mb-1" />
+                  <div className="h-7 w-12 rounded bg-slate-800" />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Right column */}
+          <div className="w-full flex justify-center mt-4 md:mt-0">
+            <div className="grid grid-cols-2 gap-6 sm:gap-6 md:gap-8 max-w-[500px] justify-items-center">
+              {[...Array(4)].map((_, i) => (
+                <div
+                  key={i}
+                  className="relative w-[160px] sm:w-[180px] md:w-[200px] aspect-[2/3] flex-shrink-0 rounded bg-slate-800 ring-1 ring-slate-700"
+                />
+              ))}
             </div>
           </div>
         </div>
-      </div>
+      </>
     );
   }
 
@@ -298,7 +322,6 @@ export default function Profile() {
             onClick={handleCloseModal}
           />
           <div className={`bg-slate-900 rounded-lg border border-slate-800 w-full max-w-2xl p-4 relative z-10 modal-content ${isModalClosing ? 'modal-content-closing' : 'modal-content-opening'}`}>
-            {/* Header */}
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-xl font-bold text-slate-50">Choose a Film for Showcase</h3>
               <button
@@ -309,7 +332,6 @@ export default function Profile() {
               </button>
             </div>
 
-            {/* Search */}
             <div className="relative mb-4">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500 w-4 h-4" />
               <input
@@ -322,7 +344,6 @@ export default function Profile() {
               />
             </div>
 
-            {/* Search Results */}
             <div className="space-y-1 max-h-96 overflow-y-auto overflow-x-hidden">
               {searchResults.map((movie) => (
                 <div
@@ -365,60 +386,25 @@ export default function Profile() {
 
       <style>{`
         @keyframes modalOverlayIn {
-          from {
-            opacity: 0;
-          }
-          to {
-            opacity: 1;
-          }
+          from { opacity: 0; }
+          to { opacity: 1; }
         }
-
         @keyframes modalOverlayOut {
-          from {
-            opacity: 1;
-          }
-          to {
-            opacity: 0;
-          }
+          from { opacity: 1; }
+          to { opacity: 0; }
         }
-
         @keyframes modalContentIn {
-          from {
-            opacity: 0;
-            transform: scale(0.95) translateY(-20px);
-          }
-          to {
-            opacity: 1;
-            transform: scale(1) translateY(0);
-          }
+          from { opacity: 0; transform: scale(0.95) translateY(-20px); }
+          to { opacity: 1; transform: scale(1) translateY(0); }
         }
-
         @keyframes modalContentOut {
-          from {
-            opacity: 1;
-            transform: scale(1) translateY(0);
-          }
-          to {
-            opacity: 0;
-            transform: scale(0.95) translateY(-20px);
-          }
+          from { opacity: 1; transform: scale(1) translateY(0); }
+          to { opacity: 0; transform: scale(0.95) translateY(-20px); }
         }
-
-        .modal-opening {
-          animation: modalOverlayIn 0.25s ease-out forwards;
-        }
-
-        .modal-closing {
-          animation: modalOverlayOut 0.2s ease-in forwards;
-        }
-
-        .modal-content-opening {
-          animation: modalContentIn 0.25s ease-out forwards;
-        }
-
-        .modal-content-closing {
-          animation: modalContentOut 0.2s ease-in forwards;
-        }
+        .modal-opening { animation: modalOverlayIn 0.25s ease-out forwards; }
+        .modal-closing { animation: modalOverlayOut 0.2s ease-in forwards; }
+        .modal-content-opening { animation: modalContentIn 0.25s ease-out forwards; }
+        .modal-content-closing { animation: modalContentOut 0.2s ease-in forwards; }
       `}</style>
     </div>
   );
