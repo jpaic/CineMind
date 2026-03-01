@@ -43,7 +43,7 @@ export default function PrivacyPolicy() {
   return (
     <div className="max-w-3xl mx-auto w-full">
       <div className="max-w-3xl mx-auto w-full">
-        <h1 className="text-3xl font-bold mb-2 bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
+        <h1 className="text-3xl font-bold mb-2 text-slate-50">
           Privacy Policy
         </h1>
         <p className="text-slate-400 mb-2">Effective Date: December 12, 2025</p>
@@ -53,7 +53,7 @@ export default function PrivacyPolicy() {
 
         <div className="space-y-6">
           {sections.map((section, index) => (
-            <div key={index} className="border border-slate-800 rounded-lg p-6 hover:border-purple-500/30 transition">
+            <div key={index} className="border border-slate-800 rounded-lg p-6 hover:border-blue-500/30 transition">
               <h2 className="text-xl font-semibold mb-3 text-slate-200">{section.title}</h2>
               <p className="text-slate-400 leading-relaxed">{section.content}</p>
             </div>
@@ -61,7 +61,7 @@ export default function PrivacyPolicy() {
         </div>
 
         {/* Footer */}
-        <div className="mt-8 p-6 bg-gradient-to-br from-purple-900/10 to-cyan-900/10 border border-purple-500/20 rounded-lg">
+        <div className="mt-8 p-6 bg-slate-900/60 border border-blue-500/20 rounded-lg">
           <p className="text-sm text-slate-400 text-center">
             By using Cinema Hub, you agree to the terms outlined in this Privacy Policy.
           </p>

@@ -8,10 +8,10 @@ export default function FilmReelLoading({ isVisible, message = "Loading...", blo
       {/* Background */}
       <div
         className={`absolute inset-0 bg-gradient-to-br 
-          from-blue-900/20 
-          via-blue-950/25 
-          via-slate-950/30 
-          to-black/35 
+          from-slate-900/40 
+          via-slate-800/55 
+          via-slate-700/45 
+          to-slate-950/80 
           backdrop-blur-sm ${blocking ? '' : 'pointer-events-none'}`}
       />
 
@@ -23,10 +23,10 @@ export default function FilmReelLoading({ isVisible, message = "Loading...", blo
           {/* Main rotating reel */}
           <div className="absolute inset-0 animate-spin" style={{ animationDuration: "2s", animationTimingFunction: "linear" }}>
             {/* Outer rim */}
-            <div className="absolute inset-0 rounded-full border-[5px] border-blue-200/80" />
+            <div className="absolute inset-0 rounded-full border-[5px] border-blue-500/70" />
             
             {/* Center hole */}
-            <div className="absolute w-4 h-4 rounded-full bg-black/70 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+            <div className="absolute w-4 h-4 rounded-full bg-slate-950/70 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
             
             {/* Inner holes (6) */}
             {Array.from({ length: 6 }).map((_, i) => {
@@ -39,7 +39,7 @@ export default function FilmReelLoading({ isVisible, message = "Loading...", blo
                     top: "50%",
                     left: "50%",
                     transform: `translate(-50%, -50%) rotate(${angle}deg) translateY(-16px)`,
-                    animation: `holeFillEmpty 4s linear infinite`,
+                    animation: `cm-hole-fill-empty 4s linear infinite`,
                     animationDelay: `${-(angle / 360) * 2}s`
                   }}
                 />
@@ -57,7 +57,7 @@ export default function FilmReelLoading({ isVisible, message = "Loading...", blo
                     top: "50%",
                     left: "50%",
                     transform: `translate(-50%, -50%) rotate(${angle}deg) translateY(-36px)`,
-                    animation: `holeFillEmpty 4s linear infinite`,
+                    animation: `cm-hole-fill-empty 4s linear infinite`,
                     animationDelay: `${-(angle / 360) * 2}s`
                   }}
                 />
@@ -65,25 +65,10 @@ export default function FilmReelLoading({ isVisible, message = "Loading...", blo
             })}
           </div>
           
-          <style>{`
-            @keyframes holeFillEmpty {
-              0% { background-color: rgba(0, 0, 0, 0.7); }
-              3% { background-color: rgba(0, 0, 0, 0.6); }
-              6% { background-color: rgba(0, 0, 0, 0.4); }
-              9% { background-color: rgba(0, 0, 0, 0.2); }
-              12% { background-color: transparent; }
-              38% { background-color: transparent; }
-              41% { background-color: rgba(0, 0, 0, 0.2); }
-              44% { background-color: rgba(0, 0, 0, 0.4); }
-              47% { background-color: rgba(0, 0, 0, 0.6); }
-              50% { background-color: rgba(0, 0, 0, 0.7); }
-              100% { background-color: rgba(0, 0, 0, 0.7); }
-            }
-          `}</style>
         </div>
 
         {/* Loading text */}
-        <p className="text-lg font-semibold text-blue-100">
+        <p className="text-lg font-semibold text-slate-100">
           {message}
         </p>
       </div>

@@ -79,7 +79,7 @@ export default function Login({ onAuthComplete }) {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-900 text-white">
+    <div className="flex flex-col min-h-screen bg-slate-950 text-slate-50">
       <Navbar loggedIn={false} />
 
       {/* Loading Overlay */}
@@ -89,13 +89,13 @@ export default function Login({ onAuthComplete }) {
       />
 
       <main className="flex flex-col items-center justify-center flex-1 px-4 sm:px-6 lg:px-8">
-        <div className="w-full max-w-md bg-gray-800 rounded-lg shadow-lg p-6">
+        <div className="w-full max-w-md bg-slate-800 rounded-lg shadow-lg p-6">
           <h1 className="text-3xl font-bold mb-6 text-center">
             {isSignup ? "Sign Up" : "Login"}
           </h1>
 
           {error && (
-            <div className="bg-red-500/20 border border-red-500 text-red-400 px-4 py-3 rounded mb-4">
+            <div className="bg-slate-900/60 border border-blue-500/40 text-slate-100 px-4 py-3 rounded mb-4">
               {error}
             </div>
           )}
@@ -108,12 +108,12 @@ export default function Login({ onAuthComplete }) {
                 placeholder="Username"
                 value={form.username}
                 onChange={handleChange}
-                className="w-full px-4 py-2 rounded-md bg-gray-700 text-white"
+                className="w-full px-4 py-2 rounded-md bg-slate-700 text-slate-50"
                 required
                 disabled={loading}
               />
               {isSignup && (
-                <p className="text-xs text-gray-400 mt-1">
+                <p className="text-xs text-slate-400 mt-1">
                   3-20 characters, letters, numbers, and underscores only
                 </p>
               )}
@@ -126,7 +126,7 @@ export default function Login({ onAuthComplete }) {
                 placeholder="Email"
                 value={form.email}
                 onChange={handleChange}
-                className="w-full px-4 py-2 rounded-md bg-gray-700 text-white"
+                className="w-full px-4 py-2 rounded-md bg-slate-700 text-slate-50"
                 required
                 disabled={loading}
               />
@@ -139,12 +139,12 @@ export default function Login({ onAuthComplete }) {
                 placeholder="Password"
                 value={form.password}
                 onChange={handleChange}
-                className="w-full px-4 py-2 rounded-md bg-gray-700 text-white"
+                className="w-full px-4 py-2 rounded-md bg-slate-700 text-slate-50"
                 required
                 disabled={loading}
               />
               {isSignup && (
-                <div className="text-xs text-gray-400 mt-1 space-y-1">
+                <div className="text-xs text-slate-400 mt-1 space-y-1">
                   <p>Password must contain:</p>
                   <ul className="list-disc list-inside pl-2">
                     <li>At least 8 characters</li>
@@ -163,12 +163,12 @@ export default function Login({ onAuthComplete }) {
                   id="rememberMe"
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
-                  className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2 cursor-pointer"
+                  className="w-4 h-4 text-blue-600 bg-slate-700 border-slate-600 rounded focus:ring-blue-500 focus:ring-2 cursor-pointer"
                   disabled={loading}
                 />
                 <label
                   htmlFor="rememberMe"
-                  className="ml-2 text-sm text-gray-300 cursor-pointer select-none"
+                  className="ml-2 text-sm text-slate-300 cursor-pointer select-none"
                 >
                   Remember me
                 </label>
@@ -184,7 +184,7 @@ export default function Login({ onAuthComplete }) {
             </button>
           </form>
 
-          <p className="text-sm text-gray-400 mt-4 text-center">
+          <p className="text-sm text-slate-400 mt-4 text-center">
             {isSignup ? "Already have an account?" : "Don't have an account?"}{" "}
             <span
               className="text-blue-400 hover:underline cursor-pointer"
@@ -197,7 +197,7 @@ export default function Login({ onAuthComplete }) {
           </p>
 
           {isSignup && (
-            <p className="text-xs text-gray-500 mt-4 text-center">
+            <p className="text-xs text-slate-500 mt-4 text-center">
               By signing up, you agree this is a demo project for portfolio purposes.
             </p>
           )}

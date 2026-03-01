@@ -114,14 +114,14 @@ export default function Navbar({ loggedIn, onLogout, onStartTransition, onNaviga
       {btn.label}
       <span
         className={`absolute left-0 bottom-0 w-full h-0.5 transform scale-x-0 origin-center transition-transform duration-300
-          ${isActivePath(btn.path) ? 'scale-x-100 bg-blue-500' : 'group-hover:scale-x-100 bg-gray-600'} 
+          ${isActivePath(btn.path) ? 'scale-x-100 bg-blue-500' : 'group-hover:scale-x-100 bg-slate-600'} 
         `}
       ></span>
     </button>
   );
 
   return (
-    <nav className="w-full bg-gray-900 text-white shadow-lg">
+    <nav className="w-full bg-slate-950 text-slate-50 shadow-lg">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
@@ -147,7 +147,7 @@ export default function Navbar({ loggedIn, onLogout, onStartTransition, onNaviga
                   placeholder="Search..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-64 pl-9 pr-9 py-1.5 rounded-lg bg-slate-800 text-slate-50 text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500/50 border border-slate-700 transition-all"
+                  className="w-64 pl-9 pr-9 py-1.5 rounded-lg bg-slate-800 text-slate-50 text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 border border-slate-700 transition-all"
                 />
                 {searchQuery && (
                   <button
@@ -166,13 +166,13 @@ export default function Navbar({ loggedIn, onLogout, onStartTransition, onNaviga
             {!loggedIn && isLandingPage && (
               <>
                 <button
-                  className="px-4 py-2 text-white hover:text-blue-400 transition"
+                  className="px-4 py-2 text-slate-50 hover:text-blue-400 transition"
                   onClick={handleLoginClick}
                 >
                   Login
                 </button>
                 <button
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition"
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-slate-50 rounded-md transition"
                   onClick={handleSignupClick}
                 >
                   Sign Up
@@ -183,16 +183,16 @@ export default function Navbar({ loggedIn, onLogout, onStartTransition, onNaviga
             {loggedIn && isAppPage && (
               <div className="relative ml-4" ref={dropdownRef}>
                 <button
-                  className="p-2 rounded-full hover:bg-gray-700 transition cursor-pointer"
+                  className="p-2 rounded-full hover:bg-slate-700 transition cursor-pointer"
                   onClick={() => setDropdownOpen(!dropdownOpen)}
                 >
                   <FiSettings className="w-6 h-6" />
                 </button>
                 {dropdownOpen && (
-                  <div className="absolute right-0 mt-2 bg-gray-800 rounded-md shadow-lg py-2 z-50 min-w-[10rem]">
-                    <div className="absolute -top-2 right-3 w-3 h-3 bg-gray-800 rotate-45"></div>
+                  <div className="absolute right-0 mt-2 bg-slate-800 rounded-md shadow-lg py-2 z-50 min-w-[10rem]">
+                    <div className="absolute -top-2 right-3 w-3 h-3 bg-slate-800 rotate-45"></div>
                     <button
-                      className="w-full text-left px-4 py-2 hover:bg-gray-700 transition text-sm cursor-pointer"
+                      className="w-full text-left px-4 py-2 hover:bg-slate-700 transition text-sm cursor-pointer"
                       onClick={() => {
                         navigate('/settings');
                         setDropdownOpen(false);
@@ -202,7 +202,7 @@ export default function Navbar({ loggedIn, onLogout, onStartTransition, onNaviga
                       Settings
                     </button>
                     <button
-                      className="w-full text-left px-4 py-2 hover:bg-gray-700 transition text-sm cursor-pointer"
+                      className="w-full text-left px-4 py-2 hover:bg-slate-700 transition text-sm cursor-pointer"
                       onClick={() => {
                         navigate('/help');
                         setDropdownOpen(false);
@@ -212,7 +212,7 @@ export default function Navbar({ loggedIn, onLogout, onStartTransition, onNaviga
                       Help / FAQ
                     </button>
                     <button
-                      className="w-full text-left px-4 py-2 hover:bg-gray-700 transition text-sm cursor-pointer"
+                      className="w-full text-left px-4 py-2 hover:bg-slate-700 transition text-sm cursor-pointer"
                       onClick={() => {
                         navigate('/legal/privacy-policy');
                         setDropdownOpen(false);
@@ -221,9 +221,9 @@ export default function Navbar({ loggedIn, onLogout, onStartTransition, onNaviga
                     >
                       Privacy Policy
                     </button>
-                    <hr className="border-gray-700 my-1" />
+                    <hr className="border-slate-700 my-1" />
                     <button
-                      className="w-full text-left px-4 py-2 hover:bg-red-700 text-red-500 font-semibold transition rounded-b-md text-sm cursor-pointer"
+                      className="w-full text-left px-4 py-2 hover:bg-blue-700 text-slate-50 font-semibold transition rounded-b-md text-sm cursor-pointer"
                       onClick={handleLogout}
                     >
                       Logout
@@ -265,7 +265,7 @@ export default function Navbar({ loggedIn, onLogout, onStartTransition, onNaviga
                   placeholder="Search..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-11 pr-9 py-2 rounded-lg bg-slate-800 text-slate-50 text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500/50 border border-slate-700 transition-all"
+                  className="w-full pl-11 pr-9 py-2 rounded-lg bg-slate-800 text-slate-50 text-sm placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 border border-slate-700 transition-all"
                 />
                 {searchQuery && (
                   <button
@@ -289,7 +289,7 @@ export default function Navbar({ loggedIn, onLogout, onStartTransition, onNaviga
                 Login
               </button>
               <button
-                className="w-full text-center py-2 px-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-md transition cursor-pointer"
+                className="w-full text-center py-2 px-3 bg-blue-600 hover:bg-blue-700 text-slate-50 font-semibold rounded-md transition cursor-pointer"
                 onClick={handleSignupClick}
               >
                 Sign Up
@@ -299,10 +299,10 @@ export default function Navbar({ loggedIn, onLogout, onStartTransition, onNaviga
           {loggedIn && isAppPage && menuButtons.map(renderNavButton)}
           {loggedIn && isAppPage && (
             <div className="flex flex-col items-center space-y-1 w-full pt-2">
-              <button className="w-full text-center py-2 px-3 hover:bg-gray-700 transition rounded-md cursor-pointer" onClick={() => { navigate('/settings'); setMobileMenuOpen(false); }}>Settings</button>
-              <button className="w-full text-center py-2 px-3 hover:bg-gray-700 transition rounded-md cursor-pointer" onClick={() => { navigate('/help'); setMobileMenuOpen(false); }}>Help / FAQ</button>
-              <button className="w-full text-center py-2 px-3 hover:bg-gray-700 transition rounded-md cursor-pointer" onClick={() => { navigate('/legal/privacy-policy'); setMobileMenuOpen(false); }}>Privacy Policy</button>
-              <button className="w-full text-center py-2 px-3 bg-red-500 hover:bg-red-600 text-white font-semibold rounded-md transition cursor-pointer" onClick={handleLogout}>Logout</button>
+              <button className="w-full text-center py-2 px-3 hover:bg-slate-700 transition rounded-md cursor-pointer" onClick={() => { navigate('/settings'); setMobileMenuOpen(false); }}>Settings</button>
+              <button className="w-full text-center py-2 px-3 hover:bg-slate-700 transition rounded-md cursor-pointer" onClick={() => { navigate('/help'); setMobileMenuOpen(false); }}>Help / FAQ</button>
+              <button className="w-full text-center py-2 px-3 hover:bg-slate-700 transition rounded-md cursor-pointer" onClick={() => { navigate('/legal/privacy-policy'); setMobileMenuOpen(false); }}>Privacy Policy</button>
+              <button className="w-full text-center py-2 px-3 bg-blue-500 hover:bg-blue-600 text-slate-50 font-semibold rounded-md transition cursor-pointer" onClick={handleLogout}>Logout</button>
             </div>
           )}
         </div>

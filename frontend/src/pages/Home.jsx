@@ -134,7 +134,7 @@ export default function Home({ onLogout }) {
             <div className="max-w-7xl mx-auto w-full">
               {/* Header */}
               <div className="mb-12">
-                <h1 className="text-4xl font-bold mb-2 text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400">
+                <h1 className="text-4xl font-bold mb-2 text-slate-50">
                   Cinema Hub
                 </h1>
                 <p className="text-slate-400">Stay updated with the film world</p>
@@ -144,7 +144,7 @@ export default function Home({ onLogout }) {
               {loading && (
                 <>
                   <div className="mb-12">
-                    <h2 className="text-2xl font-bold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400">
+                    <h2 className="text-2xl font-bold mb-6 text-slate-50">
                       Upcoming Releases
                     </h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -153,7 +153,7 @@ export default function Home({ onLogout }) {
                   </div>
                   
                   <div className="mb-12">
-                    <div className="bg-gradient-to-br from-purple-900/20 to-cyan-900/20 border border-purple-500/30 rounded-xl p-8 animate-pulse">
+                    <div className="bg-slate-900/60 border border-blue-500/30 rounded-xl p-8 animate-pulse">
                       <div className="h-4 bg-slate-800 rounded w-1/4 mb-4"></div>
                       <div className="space-y-3">
                         <div className="h-3 bg-slate-800 rounded w-full"></div>
@@ -163,7 +163,7 @@ export default function Home({ onLogout }) {
                   </div>
                   
                   <div className="mb-12">
-                    <h2 className="text-2xl font-bold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400">
+                    <h2 className="text-2xl font-bold mb-6 text-slate-50">
                       Featured Talent
                     </h2>
                     <div className="flex gap-6 overflow-x-auto pb-4">
@@ -179,8 +179,8 @@ export default function Home({ onLogout }) {
 
               {/* Error State */}
               {error && (
-                <div className="bg-red-900/20 border border-red-500/50 rounded-lg p-4 mb-8">
-                  <p className="text-red-400">{error}</p>
+                <div className="bg-slate-900/60 border border-blue-500/40 rounded-lg p-4 mb-8">
+                  <p className="text-slate-100">{error}</p>
                 </div>
               )}
 
@@ -190,7 +190,7 @@ export default function Home({ onLogout }) {
                   {/* Navigation Arrows */}
                   <button
                     onClick={() => setShowUpcoming(true)}
-                    className={`absolute left-0 top-1/2 -translate-y-1/2 z-10 p-3 rounded-full bg-slate-900/80 backdrop-blur-sm border border-slate-700 hover:border-purple-400 transition-all duration-300 ${
+                    className={`absolute left-0 top-1/2 -translate-y-1/2 z-10 p-3 rounded-full bg-slate-900/80 backdrop-blur-sm border border-slate-700 hover:border-blue-500 transition-all duration-300 ${
                       showUpcoming ? 'opacity-50 cursor-not-allowed' : 'opacity-100 hover:scale-110'
                     }`}
                     disabled={showUpcoming}
@@ -203,7 +203,7 @@ export default function Home({ onLogout }) {
                   
                   <button
                     onClick={() => setShowUpcoming(false)}
-                    className={`absolute right-0 top-1/2 -translate-y-1/2 z-10 p-3 rounded-full bg-slate-900/80 backdrop-blur-sm border border-slate-700 hover:border-purple-400 transition-all duration-300 ${
+                    className={`absolute right-0 top-1/2 -translate-y-1/2 z-10 p-3 rounded-full bg-slate-900/80 backdrop-blur-sm border border-slate-700 hover:border-blue-500 transition-all duration-300 ${
                       !showUpcoming ? 'opacity-50 cursor-not-allowed' : 'opacity-100 hover:scale-110'
                     }`}
                     disabled={!showUpcoming}
@@ -222,7 +222,7 @@ export default function Home({ onLogout }) {
                     }}
                   >
                     <h2 
-                      className="text-2xl font-bold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400 cursor-pointer hover:opacity-80 transition-opacity w-fit"
+                      className="text-2xl font-bold mb-6 text-slate-50 cursor-pointer hover:opacity-80 transition-opacity w-fit"
                       onClick={() => navigate('/upcoming')}
                     >
                       Upcoming Releases
@@ -249,7 +249,7 @@ export default function Home({ onLogout }) {
                     }}
                   >
                     <h2 
-                      className="text-2xl font-bold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400 cursor-pointer hover:opacity-80 transition-opacity w-fit"
+                      className="text-2xl font-bold mb-6 text-slate-50 cursor-pointer hover:opacity-80 transition-opacity w-fit"
                       onClick={() => navigate('/popular')}
                     >
                       Popular Movies
@@ -273,15 +273,15 @@ export default function Home({ onLogout }) {
               {/* Weekly Brief */}
               {!loading && (
                 <div className="mb-12">
-                  <div className="bg-gradient-to-br from-purple-900/20 to-cyan-900/20 border border-purple-500/30 rounded-xl p-8">
+                  <div className="bg-slate-900/60 border border-blue-500/30 rounded-xl p-8">
                     <div className="flex items-start gap-4 mb-4">
-                      <div className="bg-gradient-to-br from-purple-500 to-cyan-500 rounded-lg p-3">
-                        <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <div className="bg-blue-500 rounded-lg p-3">
+                        <svg className="w-6 h-6 text-slate-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
                         </svg>
                       </div>
                       <div className="flex-1">
-                        <h2 className="text-2xl font-bold mb-2 text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400">
+                        <h2 className="text-2xl font-bold mb-2 text-slate-50">
                           Weekly Brief
                         </h2>
                         <p className="text-slate-300 text-sm mb-4">
@@ -305,7 +305,7 @@ export default function Home({ onLogout }) {
                           <p>
                             Awards season is heating up as Oscar contenders emerge from the festival circuit. A24's latest acquisitions are generating significant buzz, with five international films poised to make waves in the art house circuit. Industry insiders are already speculating about potential nominations across all major categories.
                           </p>
-                          <p className="text-sm text-purple-300 font-medium">
+                          <p className="text-sm text-slate-200 font-medium">
                             Stay tuned for more updates as we approach the 2025 awards season and exciting new releases.
                           </p>
                         </>
@@ -318,7 +318,7 @@ export default function Home({ onLogout }) {
               {/* Featured Talent */}
               {!loading && (
                 <div className="mb-12">
-                  <h2 className="text-2xl font-bold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400">
+                  <h2 className="text-2xl font-bold mb-6 text-slate-50">
                     Featured Talent
                   </h2>
                   <div className="relative overflow-visible">
@@ -340,7 +340,7 @@ export default function Home({ onLogout }) {
               {/* Cinema News Feed */}
               {!loading && (
                 <div>
-                  <h2 className="text-2xl font-bold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400">
+                  <h2 className="text-2xl font-bold mb-6 text-slate-50">
                     Cinema News
                   </h2>
                   <div className="space-y-4">
@@ -350,7 +350,7 @@ export default function Home({ onLogout }) {
                         href={news.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex gap-4 border border-slate-800 rounded-lg p-4 hover:border-purple-400/50 transition group cursor-pointer hover:shadow-lg hover:shadow-purple-500/10"
+                        className="flex gap-4 border border-slate-800 rounded-lg p-4 hover:border-blue-500/50 transition group cursor-pointer hover:shadow-lg hover:shadow-blue-500/10"
                       >
                         <img 
                           src={news.image}
@@ -361,14 +361,14 @@ export default function Home({ onLogout }) {
                           }}
                         />
                         <div className="flex-1 min-w-0 flex flex-col justify-center">
-                          <h3 className="font-semibold text-slate-50 mb-1 group-hover:text-purple-300 transition line-clamp-2">
+                          <h3 className="font-semibold text-slate-50 mb-1 group-hover:text-slate-200 transition line-clamp-2">
                             {news.headline}
                           </h3>
                           {news.description && (
                             <p className="text-sm text-slate-400 mb-2 line-clamp-2">{news.description}</p>
                           )}
                           <div className="flex items-center gap-2">
-                            <span className="text-xs text-purple-400 font-medium">{news.source}</span>
+                            <span className="text-xs text-blue-500 font-medium">{news.source}</span>
                             <span className="text-xs text-slate-600">•</span>
                             <span className="text-xs text-slate-500">{news.timeAgo}</span>
                           </div>

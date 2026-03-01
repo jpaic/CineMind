@@ -53,7 +53,7 @@ export default function Help() {
   return (
     <div className="max-w-3xl mx-auto w-full">
       <div className="max-w-3xl mx-auto w-full">
-        <h1 className="text-3xl font-bold mb-2 bg-gradient-to-r from-cyan-400 to-purple-400 bg-clip-text text-transparent">
+        <h1 className="text-3xl font-bold mb-2 text-slate-50">
           Help & Support
         </h1>
         <p className="text-slate-400 mb-8">Find answers to common questions</p>
@@ -64,10 +64,10 @@ export default function Help() {
             <a
               key={link.title}
               href={link.link}
-              className="border border-slate-800 rounded-lg p-4 hover:border-purple-500/30 transition group cursor-pointer"
+              className="border border-slate-800 rounded-lg p-4 hover:border-blue-500/30 transition group cursor-pointer"
             >
-              <link.icon className="w-8 h-8 text-purple-400 mb-3" />
-              <h3 className="font-semibold text-slate-200 mb-1 group-hover:text-purple-300 transition">
+              <link.icon className="w-8 h-8 text-blue-500 mb-3" />
+              <h3 className="font-semibold text-slate-200 mb-1 group-hover:text-slate-200 transition">
                 {link.title}
               </h3>
               <p className="text-sm text-slate-500">{link.description}</p>
@@ -78,7 +78,7 @@ export default function Help() {
         {/* FAQ Section */}
         <div className="border border-slate-800 rounded-lg p-6">
           <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-            <HelpCircle className="w-5 h-5 text-purple-400" />
+            <HelpCircle className="w-5 h-5 text-blue-500" />
             Frequently Asked Questions
           </h2>
           
@@ -107,12 +107,12 @@ export default function Help() {
         </div>
 
         {/* Contact Section */}
-        <div className="mt-8 border border-slate-800 rounded-lg p-6 bg-gradient-to-br from-purple-900/10 to-cyan-900/10">
+        <div className="mt-8 border border-slate-800 rounded-lg p-6 bg-gradient-to-br from-slate-900/20 to-slate-800/20">
           <h2 className="text-xl font-semibold mb-3">Still need help?</h2>
           <p className="text-slate-400 mb-4">
             Can't find what you're looking for? Our support team is here to help.
           </p>
-          <button className="px-6 py-2.5 bg-gradient-to-r from-cyan-500 to-purple-500 hover:from-cyan-400 hover:to-purple-400 rounded font-medium text-sm transition shadow-lg shadow-purple-500/20">
+          <button className="px-6 py-2.5 bg-blue-500 hover:bg-blue-600 rounded font-medium text-sm transition shadow-lg shadow-blue-500/20">
             Contact Support
           </button>
         </div>
