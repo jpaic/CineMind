@@ -108,7 +108,7 @@ export default function Login({ onAuthComplete }) {
                 placeholder="Username"
                 value={form.username}
                 onChange={handleChange}
-                className="w-full px-4 py-2 rounded-md bg-slate-700 text-slate-50"
+                className="w-full px-4 py-2 rounded-md bg-slate-700 text-slate-50 border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition"
                 required
                 disabled={loading}
               />
@@ -126,7 +126,7 @@ export default function Login({ onAuthComplete }) {
                 placeholder="Email"
                 value={form.email}
                 onChange={handleChange}
-                className="w-full px-4 py-2 rounded-md bg-slate-700 text-slate-50"
+                className="w-full px-4 py-2 rounded-md bg-slate-700 text-slate-50 border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition"
                 required
                 disabled={loading}
               />
@@ -139,7 +139,7 @@ export default function Login({ onAuthComplete }) {
                 placeholder="Password"
                 value={form.password}
                 onChange={handleChange}
-                className="w-full px-4 py-2 rounded-md bg-slate-700 text-slate-50"
+                className="w-full px-4 py-2 rounded-md bg-slate-700 text-slate-50 border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition"
                 required
                 disabled={loading}
               />
@@ -163,7 +163,7 @@ export default function Login({ onAuthComplete }) {
                   id="rememberMe"
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
-                  className="w-4 h-4 text-blue-600 bg-slate-700 border-slate-600 rounded focus:ring-blue-500 focus:ring-2 cursor-pointer"
+                  className="w-4 h-4 text-blue-600 bg-slate-700 border-slate-600 rounded focus:outline-none focus:ring-2 focus:ring-blue-500/50 cursor-pointer"
                   disabled={loading}
                 />
                 <label
