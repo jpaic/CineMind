@@ -286,7 +286,7 @@ export default function AddMovies({ onMovieAdded }) {
         </div>
       ) : (
         <div className={`fixed inset-0 flex items-center justify-center z-50 px-4 py-8 modal-overlay ${isClosing ? 'modal-closing' : 'modal-opening'}`}>
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={handleClose} />
+          <div className="absolute inset-0 bg-slate-950/50 backdrop-blur-sm" onClick={handleClose} />
           <div className={`bg-slate-900 rounded-xl border border-slate-800 w-full max-w-4xl p-6 md:p-8 relative z-10 modal-content ${isClosing ? 'modal-content-closing' : 'modal-content-opening'}`}>
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-2xl font-bold text-slate-50">Add a Film</h3>
@@ -295,7 +295,7 @@ export default function AddMovies({ onMovieAdded }) {
               </button>
             </div>
 
-            {error && <div className="mb-4 p-3 bg-red-500/10 border border-red-500/50 rounded text-red-400 text-sm">{error}</div>}
+            {error && <div className="mb-4 p-3 bg-slate-900/60 border border-blue-500/40 rounded text-slate-100 text-sm">{error}</div>}
 
             <div className="flex flex-col gap-5 max-h-[75vh] overflow-y-auto pr-1">
               {!selectedMovie ? (

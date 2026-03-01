@@ -155,7 +155,7 @@ export default function MyMovies() {
     return (
       <div className="flex flex-col w-full bg-slate-950 text-slate-50 min-h-screen items-center justify-center px-6">
         <div className="text-center">
-          <p className="text-red-400 mb-4">{error}</p>
+          <p className="text-slate-100 mb-4">{error}</p>
           <button
             onClick={handleRefresh}
             className="px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded text-sm transition"

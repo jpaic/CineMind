@@ -39,7 +39,7 @@ export default function FilmReelLoading({ isVisible, message = "Loading...", blo
                     top: "50%",
                     left: "50%",
                     transform: `translate(-50%, -50%) rotate(${angle}deg) translateY(-16px)`,
-                    animation: `holeFillEmpty 4s linear infinite`,
+                    animation: `cm-hole-fill-empty 4s linear infinite`,
                     animationDelay: `${-(angle / 360) * 2}s`
                   }}
                 />
@@ -57,7 +57,7 @@ export default function FilmReelLoading({ isVisible, message = "Loading...", blo
                     top: "50%",
                     left: "50%",
                     transform: `translate(-50%, -50%) rotate(${angle}deg) translateY(-36px)`,
-                    animation: `holeFillEmpty 4s linear infinite`,
+                    animation: `cm-hole-fill-empty 4s linear infinite`,
                     animationDelay: `${-(angle / 360) * 2}s`
                   }}
                 />

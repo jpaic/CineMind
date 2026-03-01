@@ -29,7 +29,7 @@ export default function Landing({ onStartTransition }) {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-900 text-white">
+    <div className="flex flex-col min-h-screen bg-slate-950 text-slate-50">
       <Navbar onStartTransition={onStartTransition} onNavigateToHome={onStartTransition} />
 
       <section className="flex flex-col items-center justify-center flex-1 text-center px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-gray-900 via-gray-800 to-gray-900">
@@ -44,7 +44,7 @@ export default function Landing({ onStartTransition }) {
           Never Run Out of Movies to Watch
         </h1>
 
-        <p className={`text-base sm:text-lg md:text-xl mb-8 max-w-xl sm:max-w-2xl text-gray-300 transition-opacity duration-700 delay-500 ${show ? 'opacity-100' : 'opacity-0'}`}>
+        <p className={`text-base sm:text-lg md:text-xl mb-8 max-w-xl sm:max-w-2xl text-slate-300 transition-opacity duration-700 delay-500 ${show ? 'opacity-100' : 'opacity-0'}`}>
           Discover new films perfectly suited to your tastes.
         </p>
 

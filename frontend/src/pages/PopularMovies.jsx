@@ -56,8 +56,8 @@ export default function PopularMovies() {
 
         {/* Error State */}
         {error && (
-          <div className="bg-red-900/20 border border-red-500/50 rounded-lg p-4 mb-8">
-            <p className="text-red-400">{error}</p>
+          <div className="bg-slate-900/60 border border-blue-500/40 rounded-lg p-4 mb-8">
+            <p className="text-slate-100">{error}</p>
           </div>
         )}
 

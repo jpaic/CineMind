@@ -84,8 +84,8 @@ export default function PersonDetails() {
                 </svg>
                 Go Back
               </button>
-              <div className="bg-red-900/20 border border-red-500/50 rounded-lg p-6">
-                <p className="text-red-400">{error || 'Person not found'}</p>
+              <div className="bg-slate-900/60 border border-blue-500/40 rounded-lg p-6">
+                <p className="text-slate-100">{error || 'Person not found'}</p>
               </div>
             </div>
           </div>

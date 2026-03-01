@@ -95,7 +95,7 @@ export default function SearchResults() {
     <div className="flex flex-col min-h-screen bg-slate-950">
       <Navbar loggedIn={true} />
       
-      <div className="flex-1 overflow-y-auto" style={{
+      <div className="flex-1 overflow-y-auto search-results-scroll" style={{
         scrollbarWidth: 'thin',
         scrollbarColor: 'var(--cm-scrollbar-thumb) var(--cm-scrollbar-track)'
       }}>
@@ -133,8 +133,8 @@ export default function SearchResults() {
 
             {/* Error State */}
             {error && (
-              <div className="bg-red-900/20 border border-red-500/50 rounded-lg p-6">
-                <p className="text-red-400">{error}</p>
+              <div className="bg-slate-900/60 border border-blue-500/40 rounded-lg p-6">
+                <p className="text-slate-100">{error}</p>
               </div>
             )}
 

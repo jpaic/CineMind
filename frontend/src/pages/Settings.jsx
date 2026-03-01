@@ -324,7 +324,7 @@ export default function Settings() {
 
       {isPasswordModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-          <button className="absolute inset-0 bg-black/70" onClick={() => setIsPasswordModalOpen(false)} />
+          <button className="absolute inset-0 bg-slate-950/70" onClick={() => setIsPasswordModalOpen(false)} />
 
           <div className="relative z-10 w-full max-w-md rounded-xl border border-slate-700 bg-slate-900 p-6">
             <div className="mb-4 flex items-center justify-between">

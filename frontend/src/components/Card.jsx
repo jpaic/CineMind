@@ -162,7 +162,7 @@ export default function Card({ movie, onClick, showRating = false, index = 0, is
         )}
         
         {isHovered && (
-          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent animate-fade-in">
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900/40 to-transparent animate-fade-in">
             <div className="absolute inset-0 p-3 flex flex-col justify-end">
               {isPerson && role && (
                 <span className="inline-block px-2 py-1 bg-blue-500/80 text-white text-xs rounded-full mb-2 w-fit">

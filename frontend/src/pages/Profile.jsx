@@ -294,7 +294,7 @@ export default function Profile() {
       {isPickingShowcase && (
         <div className={`fixed inset-0 flex items-start justify-center z-50 px-4 pt-16 modal-overlay ${isModalClosing ? 'modal-closing' : 'modal-opening'}`}>
           <div 
-            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            className="absolute inset-0 bg-slate-950/50 backdrop-blur-sm"
             onClick={handleCloseModal}
           />
           <div className={`bg-slate-900 rounded-lg border border-slate-800 w-full max-w-2xl p-4 relative z-10 modal-content ${isModalClosing ? 'modal-content-closing' : 'modal-content-opening'}`}>
