@@ -65,6 +65,21 @@ export default function FilmReelLoading({ isVisible, message = "Loading...", blo
             })}
           </div>
           
+          <style>{`
+            @keyframes holeFillEmpty {
+              0% { background-color: color-mix(in srgb, var(--cm-bg) 70%, transparent); }
+              3% { background-color: color-mix(in srgb, var(--cm-bg) 60%, transparent); }
+              6% { background-color: color-mix(in srgb, var(--cm-surface) 40%, transparent); }
+              9% { background-color: color-mix(in srgb, var(--cm-accent-2) 20%, transparent); }
+              12% { background-color: transparent; }
+              38% { background-color: transparent; }
+              41% { background-color: color-mix(in srgb, var(--cm-accent-2) 20%, transparent); }
+              44% { background-color: color-mix(in srgb, var(--cm-surface) 40%, transparent); }
+              47% { background-color: color-mix(in srgb, var(--cm-bg) 60%, transparent); }
+              50% { background-color: color-mix(in srgb, var(--cm-bg) 70%, transparent); }
+              100% { background-color: color-mix(in srgb, var(--cm-bg) 70%, transparent); }
+            }
+          `}</style>
         </div>
 
         {/* Loading text */}

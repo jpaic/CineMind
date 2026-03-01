@@ -234,7 +234,7 @@ export default function PersonDetails() {
                       onClick={() => setActiveTab('acting')}
                       className={`px-4 py-2 rounded-md text-sm font-medium transition ${
                         activeTab === 'acting'
-                          ? 'bg-blue-500 text-slate-50'
+                          ? 'bg-blue-500 text-white'
                           : 'text-slate-400 hover:text-slate-200'
                       }`}
                     >
@@ -244,7 +244,7 @@ export default function PersonDetails() {
                       onClick={() => setActiveTab('directing')}
                       className={`px-4 py-2 rounded-md text-sm font-medium transition ${
                         activeTab === 'directing'
-                          ? 'bg-blue-500 text-slate-50'
+                          ? 'bg-blue-500 text-white'
                           : 'text-slate-400 hover:text-slate-200'
                       }`}
                     >

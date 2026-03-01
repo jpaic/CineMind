@@ -148,7 +148,7 @@ export default function Card({ movie, onClick, showRating = false, index = 0, is
             disabled={isTogglingWatchlist}
             className={`absolute top-2 right-2 p-1.5 rounded-full backdrop-blur-sm transition-all duration-200 z-10 ${
               inWatchlist 
-                ? 'bg-blue-500/90 text-slate-50 hover:bg-blue-600/90' 
+                ? 'bg-blue-500/90 text-white hover:bg-blue-600/90' 
                 : 'bg-slate-900/70 text-slate-300 hover:bg-slate-800/90'
             } ${isTogglingWatchlist ? 'opacity-50 cursor-not-allowed' : 'hover:scale-110 active:scale-95'}`}
             title={inWatchlist ? 'Remove from watchlist' : 'Add to watchlist'}
@@ -165,7 +165,7 @@ export default function Card({ movie, onClick, showRating = false, index = 0, is
           <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-900/40 to-transparent animate-fade-in">
             <div className="absolute inset-0 p-3 flex flex-col justify-end">
               {isPerson && role && (
-                <span className="inline-block px-2 py-1 bg-blue-500/80 text-slate-50 text-xs rounded-full mb-2 w-fit">
+                <span className="inline-block px-2 py-1 bg-blue-500/80 text-white text-xs rounded-full mb-2 w-fit">
                   {role}
                 </span>
               )}

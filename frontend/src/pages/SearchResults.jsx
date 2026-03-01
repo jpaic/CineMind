@@ -231,6 +231,26 @@ export default function SearchResults() {
       
       <Footer />
 
+      <style>{`
+        div::-webkit-scrollbar {
+          width: 8px;
+        }
+
+        div::-webkit-scrollbar-track {
+          background: color-mix(in srgb, var(--cm-surface) 35%, transparent);
+          border-radius: 10px;
+        }
+
+        div::-webkit-scrollbar-thumb {
+          background: linear-gradient(180deg, color-mix(in srgb, var(--cm-accent) 45%, transparent), color-mix(in srgb, var(--cm-accent-2) 55%, transparent));
+          border-radius: 10px;
+          transition: background 0.3s ease;
+        }
+
+        div::-webkit-scrollbar-thumb:hover {
+          background: linear-gradient(180deg, color-mix(in srgb, var(--cm-accent) 65%, transparent), color-mix(in srgb, var(--cm-accent-2) 80%, transparent));
+        }
+      `}</style>
     </div>
   );
 }

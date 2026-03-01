@@ -364,7 +364,7 @@ export default function Settings() {
               <button
                 type="submit"
                 disabled={isSavingPassword}
-                className="w-full rounded bg-gradient-to-r from-blue-500 to-slate-700 py-2 font-medium text-slate-50 hover:from-blue-400 hover:to-slate-600 disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
+                className="w-full rounded bg-gradient-to-r from-blue-500 to-slate-700 py-2 font-medium text-white hover:from-blue-400 hover:to-slate-600 disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
               >
                 {isSavingPassword && <Loader className="w-4 h-4 animate-spin" />}
                 Update Password

@@ -75,7 +75,71 @@ export default function FilmTransition({ onComplete }) {
   }, [totalDuration, onComplete]);
 
   return (
-    <div className="film-transition fixed inset-0 z-[9999] pointer-events-none overflow-hidden">
+    <div className="fixed inset-0 z-[9999] pointer-events-none overflow-hidden">
+      <style>{`
+        .film-strip {
+          position: absolute;
+          left: 0;
+          right: 0;
+          height: calc(100% / 7);
+          transform: translateX(100%);
+          animation: slideInOut 2.1s cubic-bezier(0.65, 0, 0.35, 1) forwards;
+        }
+
+        /* Position each strip */
+        .film-strip:nth-child(1) { top: 0; }
+        .film-strip:nth-child(2) { top: calc(100% / 7); }
+        .film-strip:nth-child(3) { top: calc(200% / 7); }
+        .film-strip:nth-child(4) { top: calc(300% / 7); }
+        .film-strip:nth-child(5) { top: calc(400% / 7); }
+        .film-strip:nth-child(6) { top: calc(500% / 7); }
+        .film-strip:nth-child(7) { top: calc(600% / 7); }
+
+        /* Slide in and out animation */
+        @keyframes slideInOut {
+          0% { transform: translateX(100%); filter: blur(0px); }
+          15% { filter: blur(1.5px); }
+          35% { transform: translateX(0%); filter: blur(0px); }
+          60% { transform: translateX(0%); }
+          75% { filter: blur(1.5px); }
+          100% { transform: translateX(-100%); filter: blur(0px); }
+        }
+
+        /* Film grain */
+        .film-grain {
+          background-image: 
+            repeating-linear-gradient(0deg, transparent, transparent 2px, color-mix(in srgb, var(--cm-bg) 20%, transparent) 2px, color-mix(in srgb, var(--cm-bg) 20%, transparent) 4px),
+            repeating-linear-gradient(90deg, transparent, transparent 2px, color-mix(in srgb, var(--cm-bg) 20%, transparent) 2px, color-mix(in srgb, var(--cm-bg) 20%, transparent) 4px);
+          animation: grainShift 0.08s steps(1) infinite;
+        }
+
+        @keyframes grainShift {
+          0%,100% { transform: translate(0,0); opacity:0.2; }
+          50% { transform: translate(-1px,1px); opacity:0.25; }
+        }
+
+        .film-scratch {
+          position: absolute;
+          top: 0;
+          bottom: 0;
+          width: 1px;
+          background: linear-gradient(to bottom, 
+            transparent 0%, 
+            color-mix(in srgb, var(--cm-text) 10%, transparent) 10%,
+            transparent 30%,
+            color-mix(in srgb, var(--cm-text) 10%, transparent) 50%,
+            transparent 70%,
+            color-mix(in srgb, var(--cm-accent) 15%, transparent) 85%,
+            transparent 100%
+          );
+          opacity: 0.4;
+        }
+
+        .vignette {
+          background: radial-gradient(ellipse at center, transparent 30%, color-mix(in srgb, var(--cm-bg) 45%, transparent) 100%);
+        }
+      `}</style>
+
       {delays.map((delay, i) => (
         <FilmStripRow key={i} delay={delay} index={i} />
       ))}
