@@ -446,7 +446,7 @@ export async function requestPasswordChange(req, res) {
       ACTION_RESEND_COOLDOWN_SECONDS
     );
 
-    const confirmUrl = `${FRONTEND_URL}/login?passwordChangeToken=${encodeURIComponent(rawToken)}`;
+    const confirmUrl = `${FRONTEND_URL}/confirm/password-change?token=${encodeURIComponent(rawToken)}`;
     await sendPasswordChangeConfirmationEmail(user.email, user.username, confirmUrl, ACTION_TOKEN_TTL_MINUTES);
 
     return res.json({ success: true, message: "Check your email to confirm the password change." });
@@ -526,7 +526,7 @@ export async function requestAccountDeletion(req, res) {
       ACTION_RESEND_COOLDOWN_SECONDS
     );
 
-    const confirmUrl = `${FRONTEND_URL}/login?accountDeleteToken=${encodeURIComponent(rawToken)}`;
+    const confirmUrl = `${FRONTEND_URL}/confirm/account-deletion?token=${encodeURIComponent(rawToken)}`;
     await sendAccountDeletionConfirmationEmail(user.email, user.username, confirmUrl, ACTION_TOKEN_TTL_MINUTES);
 
     return res.json({ success: true, message: "Check your email to confirm account deletion." });

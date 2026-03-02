@@ -18,6 +18,8 @@ import PersonDetails from './pages/PersonDetails';
 import SearchResults from './pages/SearchResults';
 import UpcomingMovies from './pages/UpcomingMovies';
 import PopularMovies from './pages/PopularMovies';
+import PasswordChangeResult from './pages/PasswordChangeResult';
+import AccountDeletionResult from './pages/AccountDeletionResult';
 import FilmTransition from './components/FilmTransition';
 
 function AppContent() {
@@ -108,6 +110,16 @@ function AppContent() {
         <Route 
           path="/login" 
           element={<Login onAuthComplete={handleAuthComplete} />} 
+        />
+
+        <Route
+          path="/confirm/password-change"
+          element={<PasswordChangeResult />}
+        />
+
+        <Route
+          path="/confirm/account-deletion"
+          element={<AccountDeletionResult />}
         />
 
         {/* Protected Routes */}

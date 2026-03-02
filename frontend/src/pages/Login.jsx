@@ -9,8 +9,6 @@ import {
   registerUser,
   resendSignupVerification,
   verifyEmailToken,
-  confirmPasswordChange,
-  confirmAccountDeletion,
 } from "../api/auth";
 
 export default function Login({ onAuthComplete }) {
@@ -48,27 +46,11 @@ export default function Login({ onAuthComplete }) {
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const verifyToken = params.get("verifyToken");
-    const passwordChangeToken = params.get("passwordChangeToken");
-    const accountDeleteToken = params.get("accountDeleteToken");
-
     const run = async () => {
       if (verifyToken) {
         const result = await verifyEmailToken(verifyToken);
         setError(result.success ? "" : (result.error || "Failed to verify email."));
         setInfoMessage(result.success ? "Email verified. You can now log in." : "");
-      }
-
-      if (passwordChangeToken) {
-        const result = await confirmPasswordChange(passwordChangeToken);
-        setError(result.success ? "" : (result.error || "Failed to confirm password change."));
-        setInfoMessage(result.success ? "Password changed successfully. Please log in." : "");
-      }
-
-      if (accountDeleteToken) {
-        const result = await confirmAccountDeletion(accountDeleteToken);
-        setError(result.success ? "" : (result.error || "Failed to confirm account deletion."));
-        setInfoMessage(result.success ? "Account deleted successfully." : "");
-        authUtils.clearAuth();
       }
     };
 
@@ -287,11 +269,6 @@ export default function Login({ onAuthComplete }) {
             </span>
           </p>
 
-          {isSignup && (
-            <p className="text-xs text-slate-500 mt-4 text-center">
-              By signing up, you agree this is a demo project for portfolio purposes.
-            </p>
-          )}
         </div>
       </main>
 
