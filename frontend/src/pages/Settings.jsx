@@ -37,9 +37,13 @@ export default function Settings() {
   });
 
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [passwordModalStep, setPasswordModalStep] = useState('form');
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [isSavingPassword, setIsSavingPassword] = useState(false);
+
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
 
   const [isExporting, setIsExporting] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
@@ -142,8 +146,7 @@ export default function Settings() {
   };
 
   const handleDeleteAccount = async () => {
-    const currentPassword = window.prompt('Enter your current password to request account deletion confirmation email:');
-    if (!currentPassword) {
+    if (!deletePassword) {
       return;
     }
 
@@ -154,12 +157,14 @@ export default function Settings() {
     try {
       await authedFetch('/api/auth/account', {
         method: 'DELETE',
-        body: JSON.stringify({ currentPassword }),
+        body: JSON.stringify({ currentPassword: deletePassword }),
       });
+      setDeletePassword('');
+      setIsDeleteModalOpen(false);
       setActionMessage('Check your email to confirm account deletion.');
-      setIsDeleting(false);
     } catch (error) {
       setActionError(error.message || 'Failed to delete account.');
+    } finally {
       setIsDeleting(false);
     }
   };
@@ -181,14 +186,31 @@ export default function Settings() {
       });
 
       setActionMessage('Check your email to confirm password change.');
-      setCurrentPassword('');
-      setNewPassword('');
-      setIsPasswordModalOpen(false);
+      setPasswordModalStep('success');
     } catch (error) {
       setActionError(error.message || 'Failed to update password.');
     } finally {
       setIsSavingPassword(false);
     }
+  };
+
+  const openPasswordModal = () => {
+    setActionError('');
+    setPasswordModalStep('form');
+    setIsPasswordModalOpen(true);
+  };
+
+  const closePasswordModal = () => {
+    setIsPasswordModalOpen(false);
+    setPasswordModalStep('form');
+    setCurrentPassword('');
+    setNewPassword('');
+  };
+
+  const openDeleteModal = () => {
+    setActionError('');
+    setDeletePassword('');
+    setIsDeleteModalOpen(true);
   };
 
   return (
@@ -286,7 +308,7 @@ export default function Settings() {
 
             <div className="space-y-3">
               <button
-                onClick={() => setIsPasswordModalOpen(true)}
+                onClick={openPasswordModal}
                 className="w-full px-4 py-2.5 bg-slate-800 hover:bg-slate-700 rounded text-sm font-medium transition text-left"
               >
                 Change Password
@@ -311,7 +333,7 @@ export default function Settings() {
               </button>
 
               <button
-                onClick={handleDeleteAccount}
+                onClick={openDeleteModal}
                 disabled={isDeleting}
                 className="w-full px-4 py-2.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-60 disabled:cursor-not-allowed border border-slate-700 rounded text-sm font-medium transition text-left text-slate-200 inline-flex items-center gap-2"
               >
@@ -325,52 +347,110 @@ export default function Settings() {
 
       {isPasswordModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-          <button className="absolute inset-0 bg-slate-950/70" onClick={() => setIsPasswordModalOpen(false)} />
+          <button className="absolute inset-0 bg-slate-950/70" onClick={closePasswordModal} />
 
           <div className="relative z-10 w-full max-w-md rounded-xl border border-slate-700 bg-slate-900 p-6">
             <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-slate-100">Change Password</h3>
+              <h3 className="text-lg font-semibold text-slate-100">{passwordModalStep === 'form' ? 'Change Password' : 'Confirmation Email Sent'}</h3>
               <button
-                onClick={() => setIsPasswordModalOpen(false)}
+                onClick={closePasswordModal}
                 className="text-slate-400 hover:text-slate-200"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleChangePassword} className="space-y-4">
+            {passwordModalStep === 'form' ? (
+              <form onSubmit={handleChangePassword} className="space-y-4">
+                <div>
+                  <label className="mb-1 block text-sm text-slate-300">Current password</label>
+                  <input
+                    type="password"
+                    value={currentPassword}
+                    onChange={(event) => setCurrentPassword(event.target.value)}
+                    className="w-full rounded border border-slate-700 bg-slate-800 px-3 py-2 text-slate-100 focus:border-blue-500 focus:outline-none"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm text-slate-300">New password</label>
+                  <input
+                    type="password"
+                    value={newPassword}
+                    onChange={(event) => setNewPassword(event.target.value)}
+                    className="w-full rounded border border-slate-700 bg-slate-800 px-3 py-2 text-slate-100 focus:border-blue-500 focus:outline-none"
+                    minLength={8}
+                    required
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isSavingPassword}
+                  className="w-full rounded bg-gradient-to-r from-blue-500 to-slate-700 py-2 font-medium text-white hover:from-blue-400 hover:to-slate-600 disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
+                >
+                  {isSavingPassword && <Loader className="w-4 h-4 animate-spin" />}
+                  Update Password
+                </button>
+              </form>
+            ) : (
+              <div className="space-y-4">
+                <p className="text-sm text-slate-300">
+                  We sent a confirmation email to finalize your password change. Please open the email and click the confirmation button.
+                </p>
+                <button
+                  onClick={closePasswordModal}
+                  className="w-full rounded bg-gradient-to-r from-blue-500 to-slate-700 py-2 font-medium text-white hover:from-blue-400 hover:to-slate-600"
+                >
+                  OK
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {isDeleteModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <button className="absolute inset-0 bg-slate-950/70" onClick={() => setIsDeleteModalOpen(false)} />
+
+          <div className="relative z-10 w-full max-w-md rounded-xl border border-slate-700 bg-slate-900 p-6">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-slate-100">Delete Account</h3>
+              <button
+                onClick={() => setIsDeleteModalOpen(false)}
+                className="text-slate-400 hover:text-slate-200"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <p className="text-sm text-slate-300">
+                Enter your current password to receive the account deletion confirmation email.
+              </p>
+
               <div>
                 <label className="mb-1 block text-sm text-slate-300">Current password</label>
                 <input
                   type="password"
-                  value={currentPassword}
-                  onChange={(event) => setCurrentPassword(event.target.value)}
+                  value={deletePassword}
+                  onChange={(event) => setDeletePassword(event.target.value)}
                   className="w-full rounded border border-slate-700 bg-slate-800 px-3 py-2 text-slate-100 focus:border-blue-500 focus:outline-none"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="mb-1 block text-sm text-slate-300">New password</label>
-                <input
-                  type="password"
-                  value={newPassword}
-                  onChange={(event) => setNewPassword(event.target.value)}
-                  className="w-full rounded border border-slate-700 bg-slate-800 px-3 py-2 text-slate-100 focus:border-blue-500 focus:outline-none"
-                  minLength={8}
                   required
                 />
               </div>
 
               <button
-                type="submit"
-                disabled={isSavingPassword}
-                className="w-full rounded bg-gradient-to-r from-blue-500 to-slate-700 py-2 font-medium text-white hover:from-blue-400 hover:to-slate-600 disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
+                onClick={handleDeleteAccount}
+                disabled={isDeleting}
+                className="w-full rounded border border-red-500/40 bg-red-500/10 py-2 font-medium text-red-100 hover:bg-red-500/20 disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
               >
-                {isSavingPassword && <Loader className="w-4 h-4 animate-spin" />}
-                Update Password
+                {isDeleting && <Loader className="w-4 h-4 animate-spin" />}
+                Send Deletion Email
               </button>
-            </form>
+            </div>
           </div>
         </div>
       )}
