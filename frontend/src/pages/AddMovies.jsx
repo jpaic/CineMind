@@ -412,11 +412,11 @@ export default function AddMovies({ onMovieAdded }) {
                         const fillPercent = activeRating >= star ? 100 : activeRating >= star - 0.5 ? 50 : 0;
 
                         return (
-                          <div key={star} className="relative w-8 h-8">
-                            <Star className="w-8 h-8 text-slate-700" />
+                          <div key={star} className="relative w-11 h-11">
+                            <Star className="w-11 h-11 text-slate-700" />
                             {fillPercent > 0 && (
                               <div className="absolute inset-0 overflow-hidden" style={{ width: `${fillPercent}%` }}>
-                                <Star className="w-8 h-8 fill-amber-400 text-amber-400" />
+                                <Star className="w-11 h-11 fill-amber-400 text-amber-400" />
                               </div>
                             )}
 
@@ -435,7 +435,7 @@ export default function AddMovies({ onMovieAdded }) {
                           </div>
                         );
                       })}
-                      <span className="ml-3 text-slate-50 font-bold text-lg min-w-20">{`${activeRating.toFixed(1)}/5`}</span>
+                      <span className="ml-4 text-slate-50 font-bold text-2xl min-w-24">{`${activeRating.toFixed(1)}/5`}</span>
                     </div>
                   </div>
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Star, Calendar, Clock, Film, Bookmark, BookmarkCheck, X } from 'lucide-react';
+import { Star, Calendar, Clock, Film, X, Loader } from 'lucide-react';
 import { getPersonUrl } from '../utils/urlUtils';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
@@ -347,7 +347,7 @@ export default function MovieDetails() {
                         aria-label="Remove rating"
                         title="Remove rating"
                       >
-                        <X className="w-4 h-4" />
+                        <X className="w-5 h-5" />
                       </button>
 
                       {[1, 2, 3, 4, 5].map((star) => {
@@ -355,11 +355,11 @@ export default function MovieDetails() {
                         const fillPercent = activeRating >= star ? 100 : activeRating >= star - 0.5 ? 50 : 0;
 
                         return (
-                          <div key={star} className="relative w-5 h-5">
-                            <Star className="w-5 h-5 text-slate-700" />
+                          <div key={star} className="relative w-8 h-8">
+                            <Star className="w-8 h-8 text-slate-700" />
                             {fillPercent > 0 && (
                               <div className="absolute inset-0 overflow-hidden" style={{ width: `${fillPercent}%` }}>
-                                <Star className="w-5 h-5 fill-amber-400 text-amber-400" />
+                                <Star className="w-8 h-8 fill-amber-400 text-amber-400" />
                               </div>
                             )}
 
@@ -380,7 +380,7 @@ export default function MovieDetails() {
                           </div>
                         );
                       })}
-                      <span className="ml-2 text-sm text-slate-200 font-semibold min-w-12">
+                      <span className="ml-3 text-base text-slate-200 font-semibold min-w-14">
                         {(hoverRating ?? userRating) > 0 ? `${(hoverRating ?? userRating).toFixed(1)}/5` : 'Rate'}
                       </span>
                     </div>
@@ -388,10 +388,15 @@ export default function MovieDetails() {
                     <button
                       onClick={toggleWatchlist}
                       disabled={isTogglingWatchlist}
-                      className="inline-flex items-center gap-2 px-4 py-2 rounded-md border border-slate-700 bg-slate-800 hover:border-blue-500/60 hover:text-slate-200 transition disabled:opacity-60 disabled:cursor-not-allowed"
+                      className={`inline-flex items-center gap-2 px-4 py-2 rounded-full backdrop-blur-sm transition-all duration-200 ${
+                        isInWatchlist
+                          ? 'bg-blue-500/90 text-white hover:bg-blue-600/90'
+                          : 'bg-slate-900/70 text-slate-300 hover:bg-slate-800/90'
+                      } ${isTogglingWatchlist ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105 active:scale-95'}`}
+                      title={isInWatchlist ? 'Remove from watchlist' : 'Add to watchlist'}
                     >
-                      {isInWatchlist ? <BookmarkCheck className="w-4 h-4" /> : <Bookmark className="w-4 h-4" />}
-                      {isInWatchlist ? 'In Watchlist' : 'Add to Watchlist'}
+                      {isTogglingWatchlist ? <Loader className="w-4 h-4 animate-spin" /> : <Clock className="w-4 h-4" />}
+                      {isInWatchlist ? 'Watchlisted' : 'Watchlist'}
                     </button>
                   </div>
 
