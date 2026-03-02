@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Star, Calendar, Clock, Film, Bookmark, BookmarkCheck } from 'lucide-react';
+import { Star, Calendar, Clock, Film, Bookmark, BookmarkCheck, X } from 'lucide-react';
 import { getPersonUrl } from '../utils/urlUtils';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
@@ -21,6 +21,7 @@ export default function MovieDetails() {
   const [userRating, setUserRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(null);
   const [isSavingRating, setIsSavingRating] = useState(false);
+  const [isDeletingRating, setIsDeletingRating] = useState(false);
   const [isInWatchlist, setIsInWatchlist] = useState(false);
   const [isTogglingWatchlist, setIsTogglingWatchlist] = useState(false);
   const [actionError, setActionError] = useState(null);
@@ -76,7 +77,7 @@ export default function MovieDetails() {
   }, [id]);
 
   const saveRating = async (rating) => {
-    if (!movie || isSavingRating) {
+    if (!movie || isSavingRating || isDeletingRating) {
       return;
     }
 
@@ -104,6 +105,25 @@ export default function MovieDetails() {
       setActionError(err.message || 'Unable to save your rating right now.');
     } finally {
       setIsSavingRating(false);
+    }
+  };
+
+  const clearRating = async () => {
+    if (!movie || userRating <= 0 || isSavingRating || isDeletingRating) {
+      return;
+    }
+
+    setIsDeletingRating(true);
+    setActionError(null);
+
+    try {
+      await movieApi.deleteMovie(movie.id);
+      setUserRating(0);
+      setHoverRating(null);
+    } catch (err) {
+      setActionError(err.message || 'Unable to remove your rating right now.');
+    } finally {
+      setIsDeletingRating(false);
     }
   };
 
@@ -319,25 +339,47 @@ export default function MovieDetails() {
                 <div className="mb-6 rounded-lg border border-slate-800 bg-slate-900/60 p-4">
                   <p className="text-sm text-slate-300 mb-3">Your actions</p>
                   <div className="flex flex-wrap items-center gap-4">
-                    <div className="flex items-center gap-1.5" onMouseLeave={() => setHoverRating(null)}>
-                      {[0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5].map((star) => (
-                        <button
-                          key={star}
-                          onClick={() => saveRating(star)}
-                          onMouseEnter={() => setHoverRating(star)}
-                          
-                          className="transition-transform hover:scale-125 active:scale-95"
-                          disabled={isSavingRating}
-                        >
-                          <Star
-                            className={`w-5 h-5 ${
-                              star <= (hoverRating ?? userRating)
-                                ? 'fill-amber-400 text-amber-400'
-                                : 'text-slate-700'
-                            }`}
-                          />
-                        </button>
-                      ))}
+                    <div className="group flex items-center gap-1.5" onMouseLeave={() => setHoverRating(null)}>
+                      <button
+                        onClick={clearRating}
+                        disabled={userRating <= 0 || isSavingRating || isDeletingRating}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-400 hover:text-slate-100 disabled:cursor-not-allowed disabled:opacity-0"
+                        aria-label="Remove rating"
+                        title="Remove rating"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+
+                      {[1, 2, 3, 4, 5].map((star) => {
+                        const activeRating = hoverRating ?? userRating;
+                        const fillPercent = activeRating >= star ? 100 : activeRating >= star - 0.5 ? 50 : 0;
+
+                        return (
+                          <div key={star} className="relative w-5 h-5">
+                            <Star className="w-5 h-5 text-slate-700" />
+                            {fillPercent > 0 && (
+                              <div className="absolute inset-0 overflow-hidden" style={{ width: `${fillPercent}%` }}>
+                                <Star className="w-5 h-5 fill-amber-400 text-amber-400" />
+                              </div>
+                            )}
+
+                            <button
+                              onClick={() => saveRating(star - 0.5)}
+                              onMouseEnter={() => setHoverRating(star - 0.5)}
+                              className="absolute left-0 top-0 h-full w-1/2"
+                              disabled={isSavingRating || isDeletingRating}
+                              aria-label={`Rate ${star - 0.5} stars`}
+                            />
+                            <button
+                              onClick={() => saveRating(star)}
+                              onMouseEnter={() => setHoverRating(star)}
+                              className="absolute right-0 top-0 h-full w-1/2"
+                              disabled={isSavingRating || isDeletingRating}
+                              aria-label={`Rate ${star} stars`}
+                            />
+                          </div>
+                        );
+                      })}
                       <span className="ml-2 text-sm text-slate-200 font-semibold min-w-12">
                         {(hoverRating ?? userRating) > 0 ? `${(hoverRating ?? userRating).toFixed(1)}/5` : 'Rate'}
                       </span>
