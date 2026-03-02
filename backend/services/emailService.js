@@ -1,4 +1,7 @@
 import { Resend } from "resend";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 const FROM_EMAIL = process.env.FROM_EMAIL || "CineMind <onboarding@resend.dev>";
