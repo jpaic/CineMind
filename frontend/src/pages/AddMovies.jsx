@@ -3,8 +3,6 @@ import { X, Search, Star, Loader, CalendarDays, Upload } from 'lucide-react';
 import { tmdbService } from '../api/tmdb';
 import { movieApi } from '../api/movieApi';
 
-const STAR_VALUES = [0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5];
-
 const normalizeHeader = (value = '') => value.toLowerCase().replace(/[^a-z0-9]/g, '');
 
 const parseCsvRow = (row) => {
@@ -410,18 +408,34 @@ export default function AddMovies({ onMovieAdded }) {
                   <div>
                     <label className="block font-medium text-slate-50 mb-3 text-base">Rate this film</label>
                     <div className="flex flex-wrap items-center gap-2" onMouseLeave={() => setHoverRating(null)}>
-                      {STAR_VALUES.map((star) => (
-                        <button
-                          key={star}
-                          onClick={() => setRating(star)}
-                          onMouseEnter={() => setHoverRating(star)}
-                          
-                          className="transition-transform hover:scale-125 active:scale-95"
-                        >
-                          <Star className={`w-8 h-8 ${star <= activeRating ? 'fill-amber-400 text-amber-400' : 'text-slate-700'}`} />
-                        </button>
-                      ))}
-                      <span className="ml-3 text-slate-50 font-bold text-lg min-w-20">{`${activeRating.toFixed(1)}/5`}</span>
+                      {[1, 2, 3, 4, 5].map((star) => {
+                        const fillPercent = activeRating >= star ? 100 : activeRating >= star - 0.5 ? 50 : 0;
+
+                        return (
+                          <div key={star} className="relative w-11 h-11">
+                            <Star className="w-11 h-11 text-slate-700" />
+                            {fillPercent > 0 && (
+                              <div className="absolute inset-0 overflow-hidden" style={{ width: `${fillPercent}%` }}>
+                                <Star className="w-11 h-11 fill-amber-400 text-amber-400" />
+                              </div>
+                            )}
+
+                            <button
+                              onClick={() => setRating(star - 0.5)}
+                              onMouseEnter={() => setHoverRating(star - 0.5)}
+                              className="absolute left-0 top-0 h-full w-1/2"
+                              aria-label={`Rate ${star - 0.5} stars`}
+                            />
+                            <button
+                              onClick={() => setRating(star)}
+                              onMouseEnter={() => setHoverRating(star)}
+                              className="absolute right-0 top-0 h-full w-1/2"
+                              aria-label={`Rate ${star} stars`}
+                            />
+                          </div>
+                        );
+                      })}
+                      <span className="ml-4 text-slate-50 font-bold text-2xl min-w-24">{`${activeRating.toFixed(1)}/5`}</span>
                     </div>
                   </div>
 
