@@ -1,76 +1,121 @@
-import { Resend } from 'resend';
+import { Resend } from "resend";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+const FROM_EMAIL = process.env.FROM_EMAIL || "CineMind <onboarding@resend.dev>";
+const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
+const LOGO_URL = `${FRONTEND_URL.replace(/\/$/, "")}/logo.png`;
 
-export async function sendWelcomeEmail(email, username) {
-  try {
-    if (!process.env.RESEND_API_KEY) {
-      return { success: true, mock: true };
-    }
-
-    const data = await resend.emails.send({
-      from: "CineMind <onboarding@resend.dev>",
-      to: [email],
-      subject: 'Welcome to CineMind! 🎬',
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h1 style="color: #2563eb;">Welcome to CineMind, ${username}! 🎬</h1>
-          <p>Thank you for joining CineMind, your personal movie recommendation platform.</p>
-          <p>Here's what you can do:</p>
-          <ul>
-            <li>Discover personalized movie recommendations</li>
-            <li>Rate movies you've watched</li>
-            <li>Check out your movie stats</li>
-            <li>Get AI-powered suggestions</li>
-          </ul>
-          <p>Start exploring movies now!</p>
-          <a href="${process.env.FRONTEND_URL}/home" 
-             style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; margin-top: 20px;">
-            Go to CineMind
-          </a>
-          <p style="color: #666; font-size: 12px; margin-top: 40px;">
-            This is a demo project. Please use test data only.
-          </p>
+function emailShell({ preheader, title, subtitle, ctaText, ctaUrl, accent = "#2563eb", bodyHtml }) {
+  return `
+    <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">${preheader}</div>
+    <div style="background:#020617;padding:24px 12px;font-family:Inter,Segoe UI,Arial,sans-serif;color:#e2e8f0;">
+      <div style="max-width:620px;margin:0 auto;background:#0f172a;border:1px solid #1e293b;border-radius:14px;overflow:hidden;">
+        <div style="padding:22px 24px;border-bottom:1px solid #1e293b;background:linear-gradient(180deg,#0b1224,#0f172a);">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <img src="${LOGO_URL}" alt="CineMind" width="36" height="36" style="border-radius:8px;display:block;" />
+            <div style="font-size:22px;font-weight:700;letter-spacing:0.2px;color:#f8fafc;">CineMind</div>
+          </div>
+          <p style="margin:16px 0 6px 0;font-size:24px;line-height:1.25;color:#f8fafc;font-weight:700;">${title}</p>
+          <p style="margin:0;color:#94a3b8;font-size:14px;line-height:1.6;">${subtitle}</p>
         </div>
-      `
+
+        <div style="padding:24px;line-height:1.75;font-size:15px;color:#cbd5e1;">
+          ${bodyHtml}
+
+          <div style="margin:24px 0;">
+            <a href="${ctaUrl}" style="display:inline-block;padding:12px 18px;background:${accent};border-radius:10px;color:#ffffff;text-decoration:none;font-weight:600;">
+              ${ctaText}
+            </a>
+          </div>
+
+          <p style="margin:0 0 8px 0;color:#94a3b8;font-size:13px;">If the button doesn't work, copy and paste this URL in your browser:</p>
+          <p style="margin:0;word-break:break-all;"><a href="${ctaUrl}" style="color:#60a5fa;text-decoration:none;">${ctaUrl}</a></p>
+        </div>
+
+        <div style="padding:16px 24px;border-top:1px solid #1e293b;background:#0b1224;color:#64748b;font-size:12px;line-height:1.7;">
+          This email was sent by CineMind security systems. If this wasn't you, you can safely ignore this message.
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+async function sendEmail({ to, subject, html }) {
+  if (!resend) {
+    return { success: true, mock: true };
+  }
+
+  try {
+    const data = await resend.emails.send({
+      from: FROM_EMAIL,
+      to: [to],
+      subject,
+      html,
     });
 
     return { success: true, data };
   } catch (error) {
+    console.error("Email send failed:", error);
     return { success: false, error: error.message };
   }
 }
 
-export async function sendPasswordResetEmail(email, resetToken) {
-  try {
-    if (!process.env.RESEND_API_KEY) {
-      return { success: true, mock: true };
-    }
+export async function sendSignupVerificationEmail(email, username, verifyUrl, expiresInMinutes) {
+  return sendEmail({
+    to: email,
+    subject: "Confirm your CineMind account",
+    html: emailShell({
+      preheader: "Confirm your email to finish creating your CineMind account.",
+      title: "Confirm your account",
+      subtitle: "One quick step left before your account goes live.",
+      ctaText: "Confirm account",
+      ctaUrl: verifyUrl,
+      accent: "#2563eb",
+      bodyHtml: `
+        <p style="margin:0 0 14px 0;">Hi <strong>${username}</strong>, thanks for joining CineMind.</p>
+        <p style="margin:0 0 14px 0;">Please confirm your email address to complete registration and secure your account.</p>
+        <p style="margin:0;color:#94a3b8;">For your security, this link expires in <strong>${expiresInMinutes} minutes</strong>.</p>
+      `,
+    }),
+  });
+}
 
-    const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
+export async function sendPasswordChangeConfirmationEmail(email, username, confirmUrl, expiresInMinutes) {
+  return sendEmail({
+    to: email,
+    subject: "Confirm your password change",
+    html: emailShell({
+      preheader: "A password change was requested on your CineMind account.",
+      title: "Approve password change",
+      subtitle: "Confirm this action to finalize your new password.",
+      ctaText: "Confirm password change",
+      ctaUrl: confirmUrl,
+      accent: "#2563eb",
+      bodyHtml: `
+        <p style="margin:0 0 14px 0;">Hi <strong>${username}</strong>, we received a request to change your password.</p>
+        <p style="margin:0 0 14px 0;">If this was you, confirm it below. If not, ignore this email and your password will stay unchanged.</p>
+        <p style="margin:0;color:#94a3b8;">This confirmation link expires in <strong>${expiresInMinutes} minutes</strong>.</p>
+      `,
+    }),
+  });
+}
 
-    const data = await resend.emails.send({
-      from: "CineMind <onboarding@resend.dev>",
-      to: [email],
-      subject: 'Reset Your CineMind Password',
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h1 style="color: #2563eb;">Reset Your Password</h1>
-          <p>You requested to reset your password. Click the button below to proceed:</p>
-          <a href="${resetUrl}" 
-             style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; margin-top: 20px;">
-            Reset Password
-          </a>
-          <p style="margin-top: 20px;">This link will expire in 1 hour.</p>
-          <p style="color: #666; font-size: 12px;">
-            If you didn't request this, please ignore this email.
-          </p>
-        </div>
-      `
-    });
-
-    return { success: true, data };
-  } catch (error) {
-    return { success: false, error: error.message };
-  }
+export async function sendAccountDeletionConfirmationEmail(email, username, confirmUrl, expiresInMinutes) {
+  return sendEmail({
+    to: email,
+    subject: "Confirm account deletion",
+    html: emailShell({
+      preheader: "An account deletion request was made for your CineMind account.",
+      title: "Confirm account deletion",
+      subtitle: "This action permanently removes your account and data.",
+      ctaText: "Delete my account",
+      ctaUrl: confirmUrl,
+      accent: "#dc2626",
+      bodyHtml: `
+        <p style="margin:0 0 14px 0;">Hi <strong>${username}</strong>, we received a request to permanently delete your CineMind account.</p>
+        <p style="margin:0 0 14px 0;">If this was you, confirm deletion below. If not, ignore this email and no changes will be made.</p>
+        <p style="margin:0;color:#94a3b8;">This deletion link expires in <strong>${expiresInMinutes} minutes</strong>.</p>
+      `,
+    }),
+  });
 }

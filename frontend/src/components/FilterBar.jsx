@@ -7,7 +7,7 @@ export default function FilterBar({ movies, onFilterChange, showRatingFilter = f
     genre: 'all',
     sortBy: 'rating-desc',
     ratingMin: 0,
-    ratingMax: 10,
+    ratingMax: 5,
   });
 
   const [openDropdown, setOpenDropdown] = useState(null);
@@ -61,11 +61,11 @@ export default function FilterBar({ movies, onFilterChange, showRatingFilter = f
       genre: 'all',
       sortBy: 'rating-desc',
       ratingMin: 0,
-      ratingMax: 10,
+      ratingMax: 5,
     });
   };
 
-  const hasActiveFilters = filters.decade !== 'all' || filters.genre !== 'all' || filters.ratingMin > 0 || filters.ratingMax < 10;
+  const hasActiveFilters = filters.decade !== 'all' || filters.genre !== 'all' || filters.ratingMin > 0 || filters.ratingMax < 5;
 
   const FilterDropdown = ({ id, label, options, value, includeAll = true }) => {
     const isOpen = openDropdown === id;
@@ -152,12 +152,12 @@ export default function FilterBar({ movies, onFilterChange, showRatingFilter = f
             <button
               onClick={() => setOpenDropdown(openDropdown === 'rating' ? null : 'rating')}
               className={`px-4 py-2 rounded-lg border transition-all text-sm font-medium flex items-center gap-2 ${
-                filters.ratingMin > 0 || filters.ratingMax < 10
+                filters.ratingMin > 0 || filters.ratingMax < 5
                   ? 'bg-blue-500/20 border-blue-500/50 text-slate-200'
                   : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'
               }`}
             >
-              Rating {filters.ratingMin > 0 || filters.ratingMax < 10 ? `${filters.ratingMin}-${filters.ratingMax}` : ''}
+              Rating {filters.ratingMin > 0 || filters.ratingMax < 5 ? `${filters.ratingMin}-${filters.ratingMax}` : ''}
               <ChevronDown className={`w-4 h-4 transition-transform ${openDropdown === 'rating' ? 'rotate-180' : ''}`} />
             </button>
 
@@ -169,7 +169,7 @@ export default function FilterBar({ movies, onFilterChange, showRatingFilter = f
                     <input
                       type="range"
                       min="0"
-                      max="10"
+                      max="5"
                       step="0.5"
                       value={filters.ratingMin}
                       onChange={(e) => setFilters(prev => ({ ...prev, ratingMin: parseFloat(e.target.value) }))}
@@ -182,7 +182,7 @@ export default function FilterBar({ movies, onFilterChange, showRatingFilter = f
                     <input
                       type="range"
                       min="0"
-                      max="10"
+                      max="5"
                       step="0.5"
                       value={filters.ratingMax}
                       onChange={(e) => setFilters(prev => ({ ...prev, ratingMax: parseFloat(e.target.value) }))}
@@ -192,7 +192,7 @@ export default function FilterBar({ movies, onFilterChange, showRatingFilter = f
                   </div>
                   <button
                     onClick={() => {
-                      setFilters(prev => ({ ...prev, ratingMin: 0, ratingMax: 10 }));
+                      setFilters(prev => ({ ...prev, ratingMin: 0, ratingMax: 5 }));
                       setOpenDropdown(null);
                     }}
                     className="w-full py-2 bg-slate-700 hover:bg-slate-600 rounded text-sm transition"
