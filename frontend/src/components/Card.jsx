@@ -36,8 +36,8 @@ export default function Card({ movie, onClick, showRating = false, index = 0, is
   const role = movie.role;
 
   const renderStars = (rating) => {
-    const fullStars = Math.floor(rating / 2);
-    const hasHalfStar = rating % 2 >= 0.5;
+    const fullStars = Math.floor(rating);
+    const hasHalfStar = rating % 1 >= 0.5;
     
     return (
       <div className="flex gap-0.5">

@@ -5,8 +5,12 @@ import {
   verify,
   exportData,
   resetLibrary,
-  changePassword,
-  deleteAccount,
+  requestPasswordChange,
+  confirmPasswordChange,
+  requestAccountDeletion,
+  confirmAccountDeletion,
+  verifyEmail,
+  resendSignupVerification,
 } from "../controllers/authController.js";
 import { authRequired } from "../middleware/authMiddleware.js";
 import { authLimiter, registerLimiter } from "../middleware/rateLimiter.js";
@@ -14,13 +18,17 @@ import { authLimiter, registerLimiter } from "../middleware/rateLimiter.js";
 const router = Router();
 
 router.post("/register", registerLimiter, register);
+router.post("/register/resend-verification", authLimiter, resendSignupVerification);
+router.get("/verify-email", verifyEmail);
 router.post("/login", authLimiter, login);
 
 router.get("/verify", authRequired, verify);
 router.get("/export", authRequired, exportData);
 router.delete("/library", authRequired, resetLibrary);
-router.put("/password", authRequired, changePassword);
-router.delete("/account", authRequired, deleteAccount);
+router.put("/password", authRequired, requestPasswordChange);
+router.post("/password/confirm", confirmPasswordChange);
+router.delete("/account", authRequired, requestAccountDeletion);
+router.post("/account/confirm-delete", confirmAccountDeletion);
 
 router.get("/profile", authRequired, (req, res) => {
   res.json({ message: "You are authenticated", user: req.user });

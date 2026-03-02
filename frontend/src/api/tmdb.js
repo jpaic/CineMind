@@ -443,7 +443,46 @@ export const tmdbService = {
           runtime: movie.runtime,
           releaseDate: movie.release_date,
         };
-      } catch (error) {
+      } catch {
+        return null;
+      }
+    },
+
+    findMovieByImdbId: async (imdbId) => {
+      if (!imdbId) {
+        return null;
+      }
+
+      const normalized = String(imdbId).trim();
+      if (!/^tt\d{6,}$/.test(normalized)) {
+        return null;
+      }
+
+      try {
+        const response = await fetch(
+          `${TMDB_BASE_URL}/find/${encodeURIComponent(normalized)}?api_key=${API_KEY}&external_source=imdb_id&language=en-US`
+        );
+
+        if (!response.ok) {
+          return null;
+        }
+
+        const data = await response.json();
+        const firstMatch = data.movie_results?.[0];
+        if (!firstMatch?.id) {
+          return null;
+        }
+
+        return {
+          id: firstMatch.id,
+          title: firstMatch.title,
+          year: firstMatch.release_date ? new Date(firstMatch.release_date).getFullYear() : null,
+          poster: firstMatch.poster_path
+            ? `${TMDB_IMAGE_BASE}/w500${firstMatch.poster_path}`
+            : null,
+          overview: firstMatch.overview,
+        };
+      } catch {
         return null;
       }
     },
@@ -460,11 +499,5 @@ export const tmdbService = {
       } catch (error) {
         return [];
       }
-    },
-  
-    // Get image URL helper
-    getImageUrl: (path, size = 'w500') => {
-      if (!path) return null;
-      return `${TMDB_IMAGE_BASE}/${size}${path}`;
     },
 };

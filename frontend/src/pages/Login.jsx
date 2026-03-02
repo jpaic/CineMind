@@ -4,7 +4,14 @@ import { authUtils } from "../utils/authUtils";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import FilmReelLoading from "../components/FilmReelLoading";
-import { loginUser, registerUser } from "../api/auth";
+import {
+  loginUser,
+  registerUser,
+  resendSignupVerification,
+  verifyEmailToken,
+  confirmPasswordChange,
+  confirmAccountDeletion,
+} from "../api/auth";
 
 export default function Login({ onAuthComplete }) {
   const location = useLocation();
@@ -23,9 +30,50 @@ export default function Login({ onAuthComplete }) {
 
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState("");
+  const [infoMessage, setInfoMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [showOverlay, setShowOverlay] = useState(false);
+  const [pendingVerificationEmail, setPendingVerificationEmail] = useState("");
+  const [resendCooldown, setResendCooldown] = useState(0);
   const authInProgress = useRef(false);
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return undefined;
+    const timer = setInterval(() => {
+      setResendCooldown((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [resendCooldown]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const verifyToken = params.get("verifyToken");
+    const passwordChangeToken = params.get("passwordChangeToken");
+    const accountDeleteToken = params.get("accountDeleteToken");
+
+    const run = async () => {
+      if (verifyToken) {
+        const result = await verifyEmailToken(verifyToken);
+        setError(result.success ? "" : (result.error || "Failed to verify email."));
+        setInfoMessage(result.success ? "Email verified. You can now log in." : "");
+      }
+
+      if (passwordChangeToken) {
+        const result = await confirmPasswordChange(passwordChangeToken);
+        setError(result.success ? "" : (result.error || "Failed to confirm password change."));
+        setInfoMessage(result.success ? "Password changed successfully. Please log in." : "");
+      }
+
+      if (accountDeleteToken) {
+        const result = await confirmAccountDeletion(accountDeleteToken);
+        setError(result.success ? "" : (result.error || "Failed to confirm account deletion."));
+        setInfoMessage(result.success ? "Account deleted successfully." : "");
+        authUtils.clearAuth();
+      }
+    };
+
+    run();
+  }, [location.search]);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -33,12 +81,13 @@ export default function Login({ onAuthComplete }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (authInProgress.current) {
       return;
     }
-    
+
     setError("");
+    setInfoMessage("");
     setLoading(true);
     setShowOverlay(true);
     authInProgress.current = true;
@@ -52,8 +101,7 @@ export default function Login({ onAuthComplete }) {
         res = await loginUser(form.username, form.password);
       }
 
-      // Minimum 500ms loading time for UX
-      await new Promise(resolve => setTimeout(resolve, 600));
+      await new Promise((resolve) => setTimeout(resolve, 600));
 
       if (!res.success) {
         setError(res.error || "Something went wrong");
@@ -63,14 +111,21 @@ export default function Login({ onAuthComplete }) {
         return;
       }
 
+      if (isSignup && res.requiresEmailVerification) {
+        setPendingVerificationEmail(res.email || form.email);
+        setInfoMessage(res.message || "Check your email to confirm your account.");
+        setLoading(false);
+        setShowOverlay(false);
+        authInProgress.current = false;
+        return;
+      }
+
       authUtils.setAuth(res.token, res.username, isSignup ? true : rememberMe);
 
-      // Call completion callback
       if (onAuthComplete) {
         onAuthComplete();
       }
-      
-    } catch (err) {
+    } catch {
       setError("Server error. Try again.");
       setLoading(false);
       setShowOverlay(false);
@@ -78,14 +133,29 @@ export default function Login({ onAuthComplete }) {
     }
   };
 
+  const handleResendVerification = async () => {
+    if (!pendingVerificationEmail || resendCooldown > 0) return;
+
+    setError("");
+    setInfoMessage("");
+
+    const result = await resendSignupVerification(pendingVerificationEmail);
+    if (!result.success) {
+      setError(result.error || "Failed to resend verification email.");
+      return;
+    }
+
+    setInfoMessage(result.message || "Verification email resent.");
+    setResendCooldown(60);
+  };
+
   return (
     <div className="flex flex-col min-h-screen bg-slate-950 text-slate-50">
       <Navbar loggedIn={false} />
 
-      {/* Loading Overlay */}
-      <FilmReelLoading 
-        isVisible={showOverlay} 
-        message={isSignup ? "Creating account..." : "Logging in..."} 
+      <FilmReelLoading
+        isVisible={showOverlay}
+        message={isSignup ? "Creating account..." : "Logging in..."}
       />
 
       <main className="flex flex-col items-center justify-center flex-1 px-4 sm:px-6 lg:px-8">
@@ -100,97 +170,118 @@ export default function Login({ onAuthComplete }) {
             </div>
           )}
 
-          <form className="flex flex-col space-y-4" onSubmit={handleSubmit}>
-            <div>
-              <input
-                type="text"
-                name="username"
-                placeholder="Username"
-                value={form.username}
-                onChange={handleChange}
-                className="w-full px-4 py-2 rounded-md bg-slate-700 text-slate-50 border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition"
-                required
-                disabled={loading}
-              />
-              {isSignup && (
-                <p className="text-xs text-slate-400 mt-1">
-                  3-20 characters, letters, numbers, and underscores only
-                </p>
-              )}
+          {infoMessage && (
+            <div className="bg-slate-900/60 border border-blue-500/40 text-slate-100 px-4 py-3 rounded mb-4">
+              {infoMessage}
             </div>
+          )}
 
-            {isSignup && (
-              <input
-                type="email"
-                name="email"
-                placeholder="Email"
-                value={form.email}
-                onChange={handleChange}
-                className="w-full px-4 py-2 rounded-md bg-slate-700 text-slate-50 border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition"
-                required
-                disabled={loading}
-              />
-            )}
-
-            <div>
-              <input
-                type="password"
-                name="password"
-                placeholder="Password"
-                value={form.password}
-                onChange={handleChange}
-                className="w-full px-4 py-2 rounded-md bg-slate-700 text-slate-50 border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition"
-                required
-                disabled={loading}
-              />
-              {isSignup && (
-                <div className="text-xs text-slate-400 mt-1 space-y-1">
-                  <p>Password must contain:</p>
-                  <ul className="list-disc list-inside pl-2">
-                    <li>At least 8 characters</li>
-                    <li>One uppercase letter</li>
-                    <li>One lowercase letter</li>
-                    <li>One number</li>
-                  </ul>
-                </div>
-              )}
+          {isSignup && pendingVerificationEmail ? (
+            <div className="space-y-4">
+              <p className="text-sm text-slate-300">
+                We sent a confirmation email to <span className="font-semibold">{pendingVerificationEmail}</span>.
+                Please verify your account to finish signup.
+              </p>
+              <button
+                type="button"
+                onClick={handleResendVerification}
+                disabled={resendCooldown > 0}
+                className="w-full bg-blue-600 hover:bg-blue-700 py-2 rounded-md font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {resendCooldown > 0 ? `Resend available in ${resendCooldown}s` : "Resend verification email"}
+              </button>
             </div>
-
-            {!isSignup && (
-              <div className="flex items-center">
+          ) : (
+            <form className="flex flex-col space-y-4" onSubmit={handleSubmit}>
+              <div>
                 <input
-                  type="checkbox"
-                  id="rememberMe"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  className="w-4 h-4 text-blue-600 bg-slate-700 border-slate-600 rounded focus:outline-none focus:ring-2 focus:ring-blue-500/50 cursor-pointer"
+                  type="text"
+                  name="username"
+                  placeholder="Username"
+                  value={form.username}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 rounded-md bg-slate-700 text-slate-50 border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition"
+                  required
                   disabled={loading}
                 />
-                <label
-                  htmlFor="rememberMe"
-                  className="ml-2 text-sm text-slate-300 cursor-pointer select-none"
-                >
-                  Remember me
-                </label>
+                {isSignup && (
+                  <p className="text-xs text-slate-400 mt-1">
+                    3-20 characters, letters, numbers, and underscores only
+                  </p>
+                )}
               </div>
-            )}
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="bg-blue-600 hover:bg-blue-700 py-2 rounded-md font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? "Loading..." : isSignup ? "Sign Up" : "Login"}
-            </button>
-          </form>
+              {isSignup && (
+                <input
+                  type="email"
+                  name="email"
+                  placeholder="Email"
+                  value={form.email}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 rounded-md bg-slate-700 text-slate-50 border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition"
+                  required
+                  disabled={loading}
+                />
+              )}
+
+              <div>
+                <input
+                  type="password"
+                  name="password"
+                  placeholder="Password"
+                  value={form.password}
+                  onChange={handleChange}
+                  className="w-full px-4 py-2 rounded-md bg-slate-700 text-slate-50 border border-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition"
+                  required
+                  disabled={loading}
+                />
+                {isSignup && (
+                  <div className="text-xs text-slate-400 mt-1 space-y-1">
+                    <p>Password must contain:</p>
+                    <ul className="list-disc list-inside pl-2">
+                      <li>At least 8 characters</li>
+                      <li>One uppercase letter</li>
+                      <li>One lowercase letter</li>
+                      <li>One number</li>
+                    </ul>
+                  </div>
+                )}
+              </div>
+
+              {!isSignup && (
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="rememberMe"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    className="w-4 h-4 text-blue-600 bg-slate-700 border-slate-600 rounded focus:outline-none focus:ring-2 focus:ring-blue-500/50 cursor-pointer"
+                    disabled={loading}
+                  />
+                  <label
+                    htmlFor="rememberMe"
+                    className="ml-2 text-sm text-slate-300 cursor-pointer select-none"
+                  >
+                    Remember me
+                  </label>
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="bg-blue-600 hover:bg-blue-700 py-2 rounded-md font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loading ? "Loading..." : isSignup ? "Sign Up" : "Login"}
+              </button>
+            </form>
+          )}
 
           <p className="text-sm text-slate-400 mt-4 text-center">
             {isSignup ? "Already have an account?" : "Don't have an account?"}{" "}
             <span
               className="text-blue-400 hover:underline cursor-pointer"
-              onClick={() =>
-                navigate(isSignup ? "/login" : "/login?signup=true")
-              }
+              onClick={() => navigate(isSignup ? "/login" : "/login?signup=true")}
             >
               {isSignup ? "Login" : "Sign Up"}
             </span>
