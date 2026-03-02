@@ -6,7 +6,7 @@ import { fileURLToPath } from "url";
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 const FROM_EMAIL = process.env.FROM_EMAIL || "CineMind <onboarding@resend.dev>";
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
-const LOGO_URL = `${FRONTEND_URL.replace(/\/$/, "")}/logo.png`;
+const EMAIL_LOGO_URL = process.env.EMAIL_LOGO_URL || `${FRONTEND_URL.replace(/\/$/, "")}/logo.png`;
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -22,6 +22,10 @@ const EMBEDDED_LOGO = (() => {
 })();
 
 function emailShell({ preheader, title, subtitle, ctaText, ctaUrl, accent = "#2563eb", bodyHtml }) {
+  const logoMarkup = EMAIL_LOGO_URL
+    ? `<img src="${EMAIL_LOGO_URL}" alt="CineMind" width="32" height="32" style="display:block;border-radius:6px;" />`
+    : "";
+
   return `
     <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">${preheader}</div>
     <div style="background:#020617;padding:36px 12px;font-family:Inter,Segoe UI,Arial,sans-serif;color:#e2e8f0;">
@@ -35,11 +39,11 @@ function emailShell({ preheader, title, subtitle, ctaText, ctaUrl, accent = "#25
           <p style="margin:0;color:#94a3b8;font-size:14px;line-height:1.6;">${subtitle}</p>
         </div>
 
-        <div style="padding:24px;line-height:1.75;font-size:15px;color:#cbd5e1;">
+        <div style="padding:24px;font-size:15px;line-height:1.7;color:#334155;">
           ${bodyHtml}
 
-          <div style="margin:24px 0;">
-            <a href="${ctaUrl}" style="display:inline-block;padding:12px 18px;background:${accent};border-radius:10px;color:#ffffff;text-decoration:none;font-weight:600;">
+          <div style="margin:22px 0;">
+            <a href="${ctaUrl}" style="display:inline-block;padding:11px 18px;background:${accent};border-radius:8px;color:#ffffff;text-decoration:none;font-weight:600;">
               ${ctaText}
             </a>
           </div>
