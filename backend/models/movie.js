@@ -16,7 +16,11 @@ export async function addMovieToLibrary(userId, movieId, rating, watchedDate = n
 // Get user library
 export async function getUserMovies(userId, limit = 50, offset = 0) {
   const result = await db.query(
-    `SELECT * FROM user_movies WHERE user_id = $1 ORDER BY watched_date DESC LIMIT $2 OFFSET $3`,
+    `SELECT *
+     FROM user_movies
+     WHERE user_id = $1
+     ORDER BY watched_date DESC
+     LIMIT $2 OFFSET $3`,
     [userId, limit, offset]
   );
   return result.rows;

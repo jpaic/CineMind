@@ -19,7 +19,7 @@ export default function MovieDetails() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [userRating, setUserRating] = useState(0);
-  const [hoverRating, setHoverRating] = useState(0);
+  const [hoverRating, setHoverRating] = useState(null);
   const [isSavingRating, setIsSavingRating] = useState(false);
   const [isInWatchlist, setIsInWatchlist] = useState(false);
   const [isTogglingWatchlist, setIsTogglingWatchlist] = useState(false);
@@ -319,19 +319,19 @@ export default function MovieDetails() {
                 <div className="mb-6 rounded-lg border border-slate-800 bg-slate-900/60 p-4">
                   <p className="text-sm text-slate-300 mb-3">Your actions</p>
                   <div className="flex flex-wrap items-center gap-4">
-                    <div className="flex items-center gap-1.5">
-                      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((star) => (
+                    <div className="flex items-center gap-1.5" onMouseLeave={() => setHoverRating(null)}>
+                      {[0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5].map((star) => (
                         <button
                           key={star}
                           onClick={() => saveRating(star)}
                           onMouseEnter={() => setHoverRating(star)}
-                          onMouseLeave={() => setHoverRating(0)}
+                          
                           className="transition-transform hover:scale-125 active:scale-95"
                           disabled={isSavingRating}
                         >
                           <Star
                             className={`w-5 h-5 ${
-                              star <= (hoverRating || userRating)
+                              star <= (hoverRating ?? userRating)
                                 ? 'fill-amber-400 text-amber-400'
                                 : 'text-slate-700'
                             }`}
@@ -339,7 +339,7 @@ export default function MovieDetails() {
                         </button>
                       ))}
                       <span className="ml-2 text-sm text-slate-200 font-semibold min-w-12">
-                        {(hoverRating || userRating) > 0 ? `${hoverRating || userRating}/10` : 'Rate'}
+                        {(hoverRating ?? userRating) > 0 ? `${(hoverRating ?? userRating).toFixed(1)}/5` : 'Rate'}
                       </span>
                     </div>
 

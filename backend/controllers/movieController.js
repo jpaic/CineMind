@@ -14,9 +14,11 @@ function validateRating(rating) {
   if (parsedRating === null) {
     return { isValid: false, error: "Rating is required" };
   }
-  if (parsedRating < 0 || parsedRating > 10) {
-    return { isValid: false, error: "Rating must be between 0 and 10" };
+
+  if (parsedRating < 0.5 || parsedRating > 5) {
+    return { isValid: false, error: "Rating must be between 0.5 and 5" };
   }
+
   return { isValid: true, rating: parsedRating };
 }
 

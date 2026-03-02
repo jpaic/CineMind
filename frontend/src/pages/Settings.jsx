@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Bell, Palette, Globe, Lock, Check, Loader, X } from 'lucide-react';
 import { authUtils } from '../utils/authUtils';
 
@@ -30,7 +29,6 @@ const authedFetch = async (path, options = {}) => {
 };
 
 export default function Settings() {
-  const navigate = useNavigate();
   const [settings, setSettings] = useState({
     emailNotifications: true,
     darkMode: true,
@@ -144,8 +142,8 @@ export default function Settings() {
   };
 
   const handleDeleteAccount = async () => {
-    const confirmed = window.confirm('This will permanently delete your account and all data. This cannot be undone. Continue?');
-    if (!confirmed) {
+    const currentPassword = window.prompt('Enter your current password to request account deletion confirmation email:');
+    if (!currentPassword) {
       return;
     }
 
@@ -154,9 +152,12 @@ export default function Settings() {
     setIsDeleting(true);
 
     try {
-      await authedFetch('/api/auth/account', { method: 'DELETE' });
-      authUtils.clearAuth();
-      navigate('/', { replace: true });
+      await authedFetch('/api/auth/account', {
+        method: 'DELETE',
+        body: JSON.stringify({ currentPassword }),
+      });
+      setActionMessage('Check your email to confirm account deletion.');
+      setIsDeleting(false);
     } catch (error) {
       setActionError(error.message || 'Failed to delete account.');
       setIsDeleting(false);
@@ -179,7 +180,7 @@ export default function Settings() {
         }),
       });
 
-      setActionMessage('Password updated successfully.');
+      setActionMessage('Check your email to confirm password change.');
       setCurrentPassword('');
       setNewPassword('');
       setIsPasswordModalOpen(false);

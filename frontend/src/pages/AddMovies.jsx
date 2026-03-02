@@ -3,7 +3,7 @@ import { X, Search, Star, Loader, CalendarDays, Upload } from 'lucide-react';
 import { tmdbService } from '../api/tmdb';
 import { movieApi } from '../api/movieApi';
 
-const STAR_VALUES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+const STAR_VALUES = [0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5];
 
 const normalizeHeader = (value = '') => value.toLowerCase().replace(/[^a-z0-9]/g, '');
 
@@ -39,7 +39,7 @@ const parseCsvRow = (row) => {
   return values;
 };
 
-const toTenPointRating = (value) => {
+const toFivePointRating = (value) => {
   if (value === null || value === undefined || value === '') {
     return null;
   }
@@ -52,7 +52,7 @@ const toTenPointRating = (value) => {
   const percentageMatch = raw.match(/^(\d+(?:\.\d+)?)\s*%$/);
   if (percentageMatch) {
     const asTenPoint = Number(percentageMatch[1]) / 10;
-    return Number.isFinite(asTenPoint) ? Math.min(10, Math.max(0, Math.round(asTenPoint))) : null;
+    return Number.isFinite(asTenPoint) ? Math.min(5, Math.max(0.5, Math.round(asTenPoint * 2) / 2)) : null;
   }
 
   const fractionMatch = raw.match(/^(\d+(?:\.\d+)?)\s*\/\s*(\d+(?:\.\d+)?)$/);
@@ -62,7 +62,7 @@ const toTenPointRating = (value) => {
     if (!Number.isFinite(numerator) || !Number.isFinite(denominator) || denominator === 0) {
       return null;
     }
-    return Math.min(10, Math.max(0, Math.round((numerator / denominator) * 10)));
+    return Math.min(5, Math.max(0.5, Math.round((numerator / denominator) * 10) / 2));
   }
 
   const normalized = raw.replace(/★/g, '');
@@ -72,10 +72,28 @@ const toTenPointRating = (value) => {
   }
 
   if (numeric <= 5) {
-    return Math.round(numeric * 2);
+    return Math.min(5, Math.max(0.5, Math.round(numeric * 2) / 2));
   }
 
-  return Math.min(10, Math.max(0, Math.round(numeric)));
+  return Math.min(5, Math.max(0.5, Math.round(numeric) / 2));
+};
+
+
+const normalizeImdbId = (value) => {
+  if (!value) {
+    return null;
+  }
+
+  const match = String(value).trim().match(/tt\d{6,}/i);
+  return match ? match[0].toLowerCase() : null;
+};
+
+const parseTmdbId = (value) => {
+  const numeric = Number(value);
+  if (!Number.isInteger(numeric) || numeric <= 0) {
+    return null;
+  }
+  return numeric;
 };
 
 const parseImportCsv = (csvText) => {
@@ -103,7 +121,9 @@ const parseImportCsv = (csvText) => {
   const titleIndex = findHeaderIndex('Name', 'Title', 'Film', 'Movie', 'Original Title', 'Primary Title');
   const yearIndex = findHeaderIndex('Year', 'Released', 'Release Year');
   const ratingIndex = findHeaderIndex('Rating', 'Your Rating', 'Personal Rating');
-  const watchedDateIndex = findHeaderIndex('Watched Date', 'Date', 'Date Rated');
+  const watchedDateIndex = findHeaderIndex('Watched Date', 'Date', 'Date Rated', 'WatchedDate');
+  const tmdbIdIndex = findHeaderIndex('TMDB ID', 'TMDBID', 'tmdbID', 'tmdb id');
+  const imdbIdIndex = findHeaderIndex('IMDb ID', 'IMDB ID', 'Const', 'imdbID', 'IMDb');
 
   if (titleIndex < 0 || ratingIndex < 0) {
     return [];
@@ -114,8 +134,10 @@ const parseImportCsv = (csvText) => {
     return {
       title: values[titleIndex]?.replace(/^"|"$/g, '').trim(),
       year: values[yearIndex] ? Number(values[yearIndex]) || null : null,
-      rating: toTenPointRating(values[ratingIndex]),
+      rating: toFivePointRating(values[ratingIndex]),
       watchedDate: values[watchedDateIndex] || null,
+      tmdbId: tmdbIdIndex >= 0 ? parseTmdbId(values[tmdbIdIndex]) : null,
+      imdbId: imdbIdIndex >= 0 ? normalizeImdbId(values[imdbIdIndex]) : null,
     };
   }).filter((entry) => entry.title && entry.rating && entry.rating > 0);
 };
@@ -126,8 +148,8 @@ export default function AddMovies({ onMovieAdded }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [selectedMovie, setSelectedMovie] = useState(null);
-  const [rating, setRating] = useState(0);
-  const [hoverRating, setHoverRating] = useState(0);
+  const [rating, setRating] = useState(0.5);
+  const [hoverRating, setHoverRating] = useState(null);
   const [isSearching, setIsSearching] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
@@ -164,7 +186,7 @@ export default function AddMovies({ onMovieAdded }) {
   };
 
   const handleAddMovie = async () => {
-    if (!selectedMovie || rating === 0) return;
+    if (!selectedMovie || !rating) return;
 
     setIsAdding(true);
     setError(null);
@@ -176,7 +198,7 @@ export default function AddMovies({ onMovieAdded }) {
         onMovieAdded();
       }
 
-      alert(`Added ${selectedMovie.title} with rating ${rating}/10`);
+      alert(`Added ${selectedMovie.title} with rating ${rating}/5`);
       handleClose();
     } catch (err) {
       setError(err.message || 'Failed to add movie. Please try again.');
@@ -209,19 +231,31 @@ export default function AddMovies({ onMovieAdded }) {
 
       for (const entry of entries) {
         try {
-          const query = entry.year ? `${entry.title} ${entry.year}` : entry.title;
-          const results = await tmdbService.searchMovies(query);
-          const bestMatch = entry.year
-            ? results.find((movie) => Number(movie.year) === Number(entry.year)) || results[0]
-            : results[0];
+          let matchedMovie = null;
 
-          if (!bestMatch?.id) {
+          if (entry.tmdbId) {
+            matchedMovie = await tmdbService.getMovieDetails(entry.tmdbId);
+          }
+
+          if (!matchedMovie && entry.imdbId) {
+            matchedMovie = await tmdbService.findMovieByImdbId(entry.imdbId);
+          }
+
+          if (!matchedMovie) {
+            const query = entry.year ? `${entry.title} ${entry.year}` : entry.title;
+            const results = await tmdbService.searchMovies(query);
+            matchedMovie = entry.year
+              ? results.find((movie) => Number(movie.year) === Number(entry.year)) || results[0]
+              : results[0];
+          }
+
+          if (!matchedMovie?.id) {
             skipped += 1;
             continue;
           }
 
-          const details = await tmdbService.getMovieDetails(bestMatch.id);
-          await movieApi.addMovie(bestMatch.id, entry.rating, entry.watchedDate || new Date(), details || bestMatch);
+          const details = await tmdbService.getMovieDetails(matchedMovie.id);
+          await movieApi.addMovie(matchedMovie.id, entry.rating, entry.watchedDate || new Date(), details || matchedMovie);
           imported += 1;
         } catch {
           skipped += 1;
@@ -246,15 +280,15 @@ export default function AddMovies({ onMovieAdded }) {
       setIsOpen(false);
       setIsClosing(false);
       setSelectedMovie(null);
-      setRating(0);
-      setHoverRating(0);
+      setRating(0.5);
+      setHoverRating(null);
       setSearchQuery('');
       setSearchResults([]);
       setError(null);
     }, 200);
   };
 
-  const activeRating = hoverRating || rating;
+  const activeRating = hoverRating ?? rating;
 
   return (
     <div className="flex flex-col w-full items-center justify-start mt-70">
@@ -363,8 +397,8 @@ export default function AddMovies({ onMovieAdded }) {
                       <button
                         onClick={() => {
                           setSelectedMovie(null);
-                          setRating(0);
-                          setHoverRating(0);
+                          setRating(0.5);
+                          setHoverRating(null);
                         }}
                         className="text-xs text-slate-400 hover:text-slate-200 transition hover:scale-105"
                       >
@@ -375,25 +409,25 @@ export default function AddMovies({ onMovieAdded }) {
 
                   <div>
                     <label className="block font-medium text-slate-50 mb-3 text-base">Rate this film</label>
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2" onMouseLeave={() => setHoverRating(null)}>
                       {STAR_VALUES.map((star) => (
                         <button
                           key={star}
                           onClick={() => setRating(star)}
                           onMouseEnter={() => setHoverRating(star)}
-                          onMouseLeave={() => setHoverRating(0)}
+                          
                           className="transition-transform hover:scale-125 active:scale-95"
                         >
                           <Star className={`w-8 h-8 ${star <= activeRating ? 'fill-amber-400 text-amber-400' : 'text-slate-700'}`} />
                         </button>
                       ))}
-                      <span className="ml-3 text-slate-50 font-bold text-lg min-w-20">{activeRating > 0 ? `${activeRating}/10` : '0/10'}</span>
+                      <span className="ml-3 text-slate-50 font-bold text-lg min-w-20">{`${activeRating.toFixed(1)}/5`}</span>
                     </div>
                   </div>
 
                   <button
                     onClick={handleAddMovie}
-                    disabled={rating === 0 || isAdding}
+                    disabled={!rating || isAdding}
                     className="w-full bg-blue-500 hover:bg-blue-600 disabled:from-slate-700 disabled:to-slate-700 disabled:opacity-50 disabled:cursor-not-allowed py-3 rounded font-medium text-base transition-all duration-150 shadow-lg shadow-blue-500/20 mt-2 hover:scale-[1.01] active:scale-[0.99] flex items-center justify-center gap-2"
                   >
                     {isAdding ? (
