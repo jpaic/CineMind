@@ -3,6 +3,7 @@ import { Bell, Palette, Globe, Lock, Check, Loader, X } from 'lucide-react';
 import { authUtils } from '../utils/authUtils';
 
 const API_URL = import.meta.env.VITE_API_URL;
+const DEMO_READ_ONLY_MESSAGE = 'Demo mode is read-only. Sign in with a real account to use this action.';
 
 const authedFetch = async (path, options = {}) => {
   const token = authUtils.getToken();
@@ -29,6 +30,7 @@ const authedFetch = async (path, options = {}) => {
 };
 
 export default function Settings() {
+  const isDemoMode = authUtils.isDemoMode();
   const [settings, setSettings] = useState({
     emailNotifications: true,
     darkMode: true,
@@ -97,6 +99,12 @@ export default function Settings() {
   ];
 
   const handleExportData = async () => {
+    if (isDemoMode) {
+      setActionError(DEMO_READ_ONLY_MESSAGE);
+      setActionMessage('');
+      return;
+    }
+
     setActionError('');
     setActionMessage('');
     setIsExporting(true);
@@ -126,6 +134,12 @@ export default function Settings() {
   };
 
   const handleResetLibrary = async () => {
+    if (isDemoMode) {
+      setActionError(DEMO_READ_ONLY_MESSAGE);
+      setActionMessage('');
+      return;
+    }
+
     const confirmed = window.confirm('This will remove all rated movies and your entire watchlist. This cannot be undone. Continue?');
     if (!confirmed) {
       return;
@@ -146,6 +160,12 @@ export default function Settings() {
   };
 
   const handleDeleteAccount = async () => {
+    if (isDemoMode) {
+      setActionError(DEMO_READ_ONLY_MESSAGE);
+      setActionMessage('');
+      return;
+    }
+
     if (!deletePassword) {
       return;
     }
@@ -171,6 +191,11 @@ export default function Settings() {
 
   const handleChangePassword = async (event) => {
     event.preventDefault();
+    if (isDemoMode) {
+      setActionError(DEMO_READ_ONLY_MESSAGE);
+      setActionMessage('');
+      return;
+    }
 
     setActionError('');
     setActionMessage('');
@@ -195,6 +220,12 @@ export default function Settings() {
   };
 
   const openPasswordModal = () => {
+    if (isDemoMode) {
+      setActionError(DEMO_READ_ONLY_MESSAGE);
+      setActionMessage('');
+      return;
+    }
+
     setActionError('');
     setPasswordModalStep('form');
     setIsPasswordModalOpen(true);
@@ -208,6 +239,12 @@ export default function Settings() {
   };
 
   const openDeleteModal = () => {
+    if (isDemoMode) {
+      setActionError(DEMO_READ_ONLY_MESSAGE);
+      setActionMessage('');
+      return;
+    }
+
     setActionError('');
     setDeletePassword('');
     setIsDeleteModalOpen(true);
