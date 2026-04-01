@@ -3,6 +3,9 @@ import { X, Search, Star, Loader, CalendarDays, Upload } from 'lucide-react';
 import Papa from 'papaparse';
 import { tmdbService } from '../api/tmdb';
 import { movieApi } from '../api/movieApi';
+import { authUtils } from '../utils/authUtils';
+
+const DEMO_READ_ONLY_MESSAGE = 'Demo mode is read-only. Sign in with a real account to import or save movies.';
 
 const normalizeHeader = (value = '') => value.toLowerCase().replace(/[^a-z0-9]/g, '');
 
@@ -146,6 +149,7 @@ const parseImportCsv = (csvText) => {
 };
 
 export default function AddMovies({ onMovieAdded }) {
+  const isDemoMode = authUtils.isDemoMode();
   const [isOpen, setIsOpen] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -211,6 +215,12 @@ export default function AddMovies({ onMovieAdded }) {
   };
 
   const handleCsvImport = async (event) => {
+    if (isDemoMode) {
+      setError(DEMO_READ_ONLY_MESSAGE);
+      event.target.value = '';
+      return;
+    }
+
     const file = event.target.files?.[0];
     event.target.value = '';
 
@@ -319,6 +329,12 @@ export default function AddMovies({ onMovieAdded }) {
               {isImporting ? 'Importing…' : 'Import from CSV'}
             </div>
           </label>
+
+          {error && (
+            <div className="w-full max-w-md mt-3 p-3 bg-slate-900/60 border border-blue-500/40 rounded text-slate-100 text-sm">
+              {error}
+            </div>
+          )}
         </div>
       ) : (
         <div className={`fixed inset-0 flex items-center justify-center z-50 px-4 py-8 modal-overlay ${isClosing ? 'modal-closing' : 'modal-opening'}`}>

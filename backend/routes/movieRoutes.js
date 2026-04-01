@@ -1,15 +1,15 @@
 import { Router } from "express";
 import * as movieController from "../controllers/movieController.js";
-import { authRequired } from "../middleware/authMiddleware.js";
+import { authRequired, blockDemoWrites } from "../middleware/authMiddleware.js";
 import { cacheLimiter } from "../middleware/rateLimiter.js";
 
 const router = Router();
 
 // ===== USER MOVIES ROUTES (AUTH REQUIRED) =====
-router.post("/add", authRequired, movieController.addMovie);
+router.post("/add", authRequired, blockDemoWrites, movieController.addMovie);
 router.get("/library", authRequired, movieController.getLibrary);
-router.put("/:movieId/rating", authRequired, movieController.updateRating);
-router.delete("/:movieId", authRequired, movieController.deleteMovie);
+router.put("/:movieId/rating", authRequired, blockDemoWrites, movieController.updateRating);
+router.delete("/:movieId", authRequired, blockDemoWrites, movieController.deleteMovie);
 
 // ===== SHOWCASE ROUTES (AUTH REQUIRED) =====
 
@@ -17,10 +17,10 @@ router.delete("/:movieId", authRequired, movieController.deleteMovie);
 router.get("/showcase", authRequired, movieController.getShowcase);
 
 // Set movie at specific position
-router.put("/showcase/:position", authRequired, movieController.setShowcasePosition);
+router.put("/showcase/:position", authRequired, blockDemoWrites, movieController.setShowcasePosition);
 
 // Remove movie from position
-router.delete("/showcase/:position", authRequired, movieController.deleteShowcasePosition);
+router.delete("/showcase/:position", authRequired, blockDemoWrites, movieController.deleteShowcasePosition);
 
 // ===== WATCHLIST ROUTES (AUTH REQUIRED) =====
 
@@ -28,10 +28,10 @@ router.delete("/showcase/:position", authRequired, movieController.deleteShowcas
 router.get("/watchlist", authRequired, movieController.getWatchlist);
 
 // Add movie to watchlist
-router.post("/watchlist/add", authRequired, movieController.addToWatchlist);
+router.post("/watchlist/add", authRequired, blockDemoWrites, movieController.addToWatchlist);
 
 // Remove movie from watchlist
-router.delete("/watchlist/:movieId", authRequired, movieController.removeFromWatchlist);
+router.delete("/watchlist/:movieId", authRequired, blockDemoWrites, movieController.removeFromWatchlist);
 
 // Check if movie is in watchlist
 router.get("/watchlist/check/:movieId", authRequired, movieController.checkWatchlist);
