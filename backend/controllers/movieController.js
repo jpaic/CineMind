@@ -414,6 +414,15 @@ function normalizePosterPath(posterPath) {
   return `https://image.tmdb.org/t/p/w500${posterPath}`;
 }
 
+function clampRatingToFiveScale(value) {
+  const parsed = parseNumber(value);
+  if (parsed === null) return null;
+
+  // TMDB ratings are on a 0-10 scale; UI uses 0-5 stars.
+  const normalized = parsed > 5 ? parsed / 2 : parsed;
+  return Math.max(0, Math.min(5, Number(normalized.toFixed(1))));
+}
+
 export async function getRecommendations(req, res) {
   try {
     const userId = req.user.id;
@@ -465,25 +474,36 @@ export async function getRecommendations(req, res) {
       cacheByMovieId = new Map(cacheResult.rows.map(row => [Number(row.movie_id), row]));
     }
 
-    const hydratedRecommendations = recommendations.map((item, index) => {
+    const seenMovieIds = new Set();
+    const hydratedRecommendations = [];
+
+    for (const item of recommendations) {
       const movieId = parseNumber(item.movie_id);
+      if (!movieId || seenMovieIds.has(movieId)) {
+        continue;
+      }
+
+      seenMovieIds.add(movieId);
+
       const cached = cacheByMovieId.get(movieId) || null;
       const genres = normalizeCachedGenres(cached?.genres);
       const score = parseNumber(item.score);
+      const voteAverage = parseNumber(item.vote_average);
 
-      return {
+      hydratedRecommendations.push({
         id: movieId,
-        rank: index + 1,
+        rank: hydratedRecommendations.length + 1,
         score,
-        rating: score,
+        matchScore: score,
+        rating: clampRatingToFiveScale(voteAverage),
         title: cached?.title || item.title || `TMDB ${movieId}`,
         year: cached?.year || item.year || null,
         poster: normalizePosterPath(cached?.poster_path || item.poster_path),
         director: cached?.director || null,
         genres,
         reasons: Array.isArray(item.reasons) ? item.reasons : [],
-      };
-    });
+      });
+    }
 
     res.json({
       success: true,

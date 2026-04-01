@@ -65,6 +65,7 @@ async def get_movie_cache_features(movie_id: int) -> dict[str, Any]:
             "poster_path": None,
             "genres": [],
             "director": None,
+            "vote_average": None,
             "actors": [],
             "keywords": [],
         }
@@ -76,6 +77,7 @@ async def get_movie_cache_features(movie_id: int) -> dict[str, Any]:
         "poster_path": row["poster_path"],
         "genres": parse_genres(row["genres"]),
         "director": row["director"].strip().lower() if row["director"] else None,
+        "vote_average": None,
         "actors": [],
         "keywords": [],
     }
@@ -105,6 +107,11 @@ async def enrich_tmdb_features(base: dict[str, Any]) -> dict[str, Any]:
                 base["year"] = int(details_data["release_date"][:4])
             if not base["poster_path"]:
                 base["poster_path"] = details_data.get("poster_path")
+            if details_data.get("vote_average") is not None:
+                try:
+                    base["vote_average"] = float(details_data["vote_average"])
+                except (TypeError, ValueError):
+                    pass
             if not base["genres"]:
                 base["genres"] = [
                     g.get("name", "").strip().lower()
@@ -190,6 +197,7 @@ async def get_candidate_ids(exclude_movie_ids: set[int], target_count: int) -> l
 
     assert http_client is not None
     candidates: list[int] = []
+    seen_ids: set[int] = set()
     page = 1
 
     while len(candidates) < target_count and page <= 10:
@@ -211,8 +219,9 @@ async def get_candidate_ids(exclude_movie_ids: set[int], target_count: int) -> l
         results = res.json().get("results", [])
         for movie in results:
             movie_id = int(movie.get("id", 0) or 0)
-            if movie_id <= 0 or movie_id in exclude_movie_ids:
+            if movie_id <= 0 or movie_id in exclude_movie_ids or movie_id in seen_ids:
                 continue
+            seen_ids.add(movie_id)
             candidates.append(movie_id)
             if len(candidates) >= target_count:
                 break
@@ -289,6 +298,7 @@ async def score_candidates(user_id: int, limit: int) -> dict[str, Any]:
                 "title": features["title"],
                 "year": features["year"],
                 "poster_path": features["poster_path"],
+                "vote_average": features.get("vote_average"),
                 "score": round(score, 4),
                 "reasons": sorted(set(reasons))[:3],
             }
@@ -296,9 +306,18 @@ async def score_candidates(user_id: int, limit: int) -> dict[str, Any]:
 
     scored.sort(key=lambda x: x["score"], reverse=True)
 
+    deduped_scored: list[dict[str, Any]] = []
+    seen_scored_ids: set[int] = set()
+    for item in scored:
+        movie_id = int(item["movie_id"])
+        if movie_id in seen_scored_ids:
+            continue
+        seen_scored_ids.add(movie_id)
+        deduped_scored.append(item)
+
     # For users with very few ratings, return top items even if score is 0.
     min_score = 0.0 if len(user_rows) < MIN_RATED_MOVIES else 0.01
-    filtered = [item for item in scored if item["score"] >= min_score]
+    filtered = [item for item in deduped_scored if item["score"] >= min_score]
 
     return {
         "type": "personalized" if len(user_rows) >= MIN_RATED_MOVIES else "sparse_personalized",

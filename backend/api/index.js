@@ -9,6 +9,9 @@ dotenv.config();
 
 const app = express();
 
+// Render/hosting sits behind a reverse proxy; trust the first proxy hop for IP-based middleware.
+app.set("trust proxy", 1);
+
 const allowedOrigins = process.env.FRONTEND_URL
   ? process.env.FRONTEND_URL.split(",").map(origin => origin.trim())
   : "*";
