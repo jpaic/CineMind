@@ -414,6 +414,54 @@ function normalizePosterPath(posterPath) {
   return `https://image.tmdb.org/t/p/w500${posterPath}`;
 }
 
+function normalizeYearFromReleaseDate(releaseDate) {
+  if (!releaseDate || typeof releaseDate !== "string") return null;
+  const year = parseNumber(releaseDate.slice(0, 4));
+  return year && year > 1800 ? year : null;
+}
+
+async function fetchTmdbRecommendationDetails(movieIds) {
+  const tmdbApiKey = process.env.TMDB_API_KEY;
+  if (!tmdbApiKey || !Array.isArray(movieIds) || movieIds.length === 0) {
+    return new Map();
+  }
+
+  const detailsByMovieId = new Map();
+
+  await Promise.all(
+    movieIds.map(async (movieId) => {
+      try {
+        const response = await fetch(
+          `https://api.themoviedb.org/3/movie/${movieId}?api_key=${tmdbApiKey}&language=en-US&append_to_response=credits`
+        );
+
+        if (!response.ok) return;
+
+        const data = await response.json();
+        const director = Array.isArray(data?.credits?.crew)
+          ? data.credits.crew.find((person) => person?.job === "Director")
+          : null;
+
+        detailsByMovieId.set(movieId, {
+          title: data?.title || null,
+          year: normalizeYearFromReleaseDate(data?.release_date),
+          poster_path: data?.poster_path || null,
+          director: director?.name || null,
+          director_id: parseNumber(director?.id),
+          genres: Array.isArray(data?.genres)
+            ? data.genres.map((genre) => genre?.name).filter(Boolean)
+            : [],
+          vote_average: parseNumber(data?.vote_average),
+        });
+      } catch {
+        // Ignore TMDB detail misses and fall back to available data.
+      }
+    })
+  );
+
+  return detailsByMovieId;
+}
+
 function clampRatingToFiveScale(value) {
   const parsed = parseNumber(value);
   if (parsed === null) return null;
@@ -465,7 +513,7 @@ export async function getRecommendations(req, res) {
 
     if (movieIds.length > 0) {
       const cacheResult = await db.query(
-        `SELECT movie_id, title, year, director, genres, poster_path
+        `SELECT movie_id, title, year, director, director_id, genres, poster_path
          FROM movie_cache
          WHERE movie_id = ANY($1::int[])`,
         [movieIds]
@@ -473,6 +521,16 @@ export async function getRecommendations(req, res) {
 
       cacheByMovieId = new Map(cacheResult.rows.map(row => [Number(row.movie_id), row]));
     }
+
+    const movieIdsMissingMetadata = movieIds.filter((movieId) => {
+      const cached = cacheByMovieId.get(movieId);
+      if (!cached) return true;
+
+      const cachedGenres = normalizeCachedGenres(cached.genres);
+      return !cached.title || !cached.year || !cached.poster_path || !cached.director || !cached.director_id || cachedGenres.length === 0;
+    });
+
+    const tmdbDetailsByMovieId = await fetchTmdbRecommendationDetails(movieIdsMissingMetadata);
 
     const seenMovieIds = new Set();
     const hydratedRecommendations = [];
@@ -487,8 +545,9 @@ export async function getRecommendations(req, res) {
 
       const cached = cacheByMovieId.get(movieId) || null;
       const genres = normalizeCachedGenres(cached?.genres);
+      const tmdb = tmdbDetailsByMovieId.get(movieId) || null;
       const score = parseNumber(item.score);
-      const voteAverage = parseNumber(item.vote_average);
+      const voteAverage = parseNumber(item.vote_average) ?? tmdb?.vote_average ?? null;
 
       hydratedRecommendations.push({
         id: movieId,
@@ -496,11 +555,12 @@ export async function getRecommendations(req, res) {
         score,
         matchScore: score,
         rating: clampRatingToFiveScale(voteAverage),
-        title: cached?.title || item.title || `TMDB ${movieId}`,
-        year: cached?.year || item.year || null,
-        poster: normalizePosterPath(cached?.poster_path || item.poster_path),
-        director: cached?.director || null,
-        genres,
+        title: cached?.title || tmdb?.title || item.title || `TMDB ${movieId}`,
+        year: cached?.year || tmdb?.year || item.year || null,
+        poster: normalizePosterPath(cached?.poster_path || tmdb?.poster_path || item.poster_path),
+        director: cached?.director || tmdb?.director || null,
+        directorId: cached?.director_id || tmdb?.director_id || null,
+        genres: genres.length > 0 ? genres : (tmdb?.genres || []),
         reasons: Array.isArray(item.reasons) ? item.reasons : [],
       });
     }
