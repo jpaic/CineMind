@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import db from "../config/db.js";
 import { loginService } from "../services/services.js";
+import { generateToken } from "../utils/jwt.js";
 import { getUserByEmail, getUserById, getUserByUsername, updateUserPassword } from "../models/user.js";
 import { validatePassword, validateUsername, validateEmail } from "../utils/passwordValidator.js";
 import { verifyPassword, hashPassword } from "../utils/hash.js";
@@ -17,6 +18,10 @@ const SIGNUP_RESEND_LIMIT = 5;
 const ACTION_RESEND_LIMIT = 3;
 const SIGNUP_RESEND_COOLDOWN_SECONDS = 60;
 const ACTION_RESEND_COOLDOWN_SECONDS = 60;
+
+const DEMO_USERNAME = process.env.DEMO_USERNAME || "Demo User";
+const DEMO_USER_ID = Number(process.env.DEMO_USER_ID || 1);
+const DEMO_TOKEN_EXPIRY = process.env.DEMO_TOKEN_EXPIRY || "2h";
 
 function generateRawToken() {
   return crypto.randomBytes(32).toString("hex");
@@ -265,11 +270,37 @@ export async function login(req, res) {
   }
 }
 
+export async function createDemoSession(req, res) {
+  try {
+    const token = generateToken(
+      {
+        id: DEMO_USER_ID,
+        username: DEMO_USERNAME,
+        demo: true,
+      },
+      DEMO_TOKEN_EXPIRY
+    );
+
+    return res.json({
+      success: true,
+      token,
+      user: {
+        id: DEMO_USER_ID,
+        username: DEMO_USERNAME,
+        demo: true,
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: "Unable to start demo session" });
+  }
+}
+
 export async function verify(req, res) {
   res.json({
     valid: true,
     userId: req.user.id,
-    username: req.user.username
+    username: req.user.username,
+    demo: req.user.demo === true,
   });
 }
 

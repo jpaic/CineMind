@@ -18,3 +18,15 @@ export function authRequired(req, res, next) {
     res.status(401).json({ error: "Invalid token" });
   }
 }
+
+export function blockDemoWrites(req, res, next) {
+  if (req.user?.demo === true) {
+    return res.status(403).json({
+      success: false,
+      error: "Demo mode is read-only. Sign in to save changes.",
+      code: "DEMO_READ_ONLY",
+    });
+  }
+
+  next();
+}

@@ -95,6 +95,31 @@ export async function confirmAccountDeletion(token) {
   }
 }
 
+
+export async function startDemoSession() {
+  try {
+    const res = await fetch(`${API_URL}/api/auth/demo-session`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+    });
+
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      return { success: false, error: data.error || `HTTP error! status: ${res.status}` };
+    }
+
+    return {
+      success: true,
+      token: data.token,
+      username: data.user?.username || "Demo User",
+      demo: true,
+    };
+  } catch (error) {
+    return { success: false, error: error.message || "Network error" };
+  }
+}
+
 export async function loginUser(username, password) {
   try {
     const res = await fetch(`${API_URL}/api/auth/login`, {
