@@ -109,6 +109,12 @@ function AppContent() {
       {showTransition && (
         <FilmTransition onComplete={handleTransitionComplete} />
       )}
+
+      {loggedIn && authUtils.isDemoMode() && (
+        <div className="bg-amber-500/20 border-y border-amber-400/50 text-amber-200 text-sm px-4 py-2 text-center">
+          Demo Mode (Read-only): changes like ratings/watchlist are disabled.
+        </div>
+      )}
       
       <Routes>
         <Route path="/demo" element={<div className="w-full h-screen flex items-center justify-center bg-slate-950 text-slate-50">Starting demo session...</div>} />

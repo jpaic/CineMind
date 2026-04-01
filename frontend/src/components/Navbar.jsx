@@ -18,6 +18,7 @@ export default function Navbar({ loggedIn, onLogout, onStartTransition }) {
   const isLandingPage = location.pathname === '/';
   const isAuthPage = location.pathname.startsWith('/login');
   const isAppPage = loggedIn && !isLandingPage && !isAuthPage;
+  const demoMode = authUtils.isDemoMode();
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -227,6 +228,11 @@ export default function Navbar({ loggedIn, onLogout, onStartTransition }) {
           )}
         </div>
       </div>
+      {demoMode && (
+        <div className="bg-amber-500/20 border-t border-amber-400/50 text-amber-200 text-sm px-4 py-2 text-center">
+          Demo Mode (Read-only): changes like ratings/watchlist are disabled.
+        </div>
+      )}
     </nav>
   );
 }
