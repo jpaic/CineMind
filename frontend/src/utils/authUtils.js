@@ -2,6 +2,7 @@ import Cookies from "js-cookie";
 
 const TOKEN_KEY = "authToken";
 const USERNAME_KEY = "username";
+const DEMO_MODE_KEY = "demoMode";
 const API_URL = import.meta.env.VITE_API_URL;
 const isSecureContext = typeof window !== "undefined" && window.location.protocol === "https:";
 
@@ -11,8 +12,9 @@ export const authUtils = {
    * @param {string} token - JWT token
    * @param {string} username - Username
    * @param {boolean} rememberMe - Use cookie for persistent login
+   * @param {boolean} demoMode - Session is demo/read-only
    */
-  setAuth(token, username, rememberMe = false) {
+  setAuth(token, username, rememberMe = false, demoMode = false) {
     if (rememberMe) {
       const options = {
         expires: 30,
@@ -34,6 +36,12 @@ export const authUtils = {
       Cookies.remove(TOKEN_KEY, { path: "/" });
       Cookies.remove(USERNAME_KEY, { path: "/" });
     }
+
+    if (demoMode) {
+      sessionStorage.setItem(DEMO_MODE_KEY, "true");
+    } else {
+      sessionStorage.removeItem(DEMO_MODE_KEY);
+    }
   },
 
   /** Get the JWT token from storage */
@@ -51,6 +59,10 @@ export const authUtils = {
       sessionStorage.getItem("username") ||
       "Guest"
     );
+  },
+
+  isDemoMode() {
+    return sessionStorage.getItem(DEMO_MODE_KEY) === "true";
   },
 
   /** Check if user is authenticated (only checks if token exists) */
@@ -84,6 +96,9 @@ export const authUtils = {
       }
 
       const data = await response.json();
+      if (data.demo === true) {
+        sessionStorage.setItem(DEMO_MODE_KEY, "true");
+      }
       return data.valid === true;
     } catch (error) {
       // On network error, be lenient and assume token might be valid
@@ -98,10 +113,11 @@ export const authUtils = {
     Cookies.remove(USERNAME_KEY, { path: "/" });
     sessionStorage.removeItem("token");
     sessionStorage.removeItem("username");
-    
+    sessionStorage.removeItem(DEMO_MODE_KEY);
+
     // Double-check: force removal with path variations (some cookies might have paths)
     Cookies.remove(TOKEN_KEY, { path: "/" });
     Cookies.remove(USERNAME_KEY, { path: "/" });
-    
+
   },
 };

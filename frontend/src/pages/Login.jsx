@@ -9,6 +9,7 @@ import {
   registerUser,
   resendSignupVerification,
   verifyEmailToken,
+  startDemoSession,
 } from "../api/auth";
 
 export default function Login({ onAuthComplete }) {
@@ -112,6 +113,27 @@ export default function Login({ onAuthComplete }) {
       setLoading(false);
       setShowOverlay(false);
       authInProgress.current = false;
+    }
+  };
+
+
+  const handleDemoLogin = async () => {
+    setError("");
+    setInfoMessage("");
+    setLoading(true);
+    setShowOverlay(true);
+
+    const res = await startDemoSession();
+    if (!res.success) {
+      setError(res.error || "Unable to start demo session.");
+      setLoading(false);
+      setShowOverlay(false);
+      return;
+    }
+
+    authUtils.setAuth(res.token, res.username, false, true);
+    if (onAuthComplete) {
+      onAuthComplete();
     }
   };
 
@@ -257,6 +279,17 @@ export default function Login({ onAuthComplete }) {
                 {loading ? "Loading..." : isSignup ? "Sign Up" : "Login"}
               </button>
             </form>
+          )}
+
+          {!isSignup && (
+            <button
+              type="button"
+              onClick={handleDemoLogin}
+              disabled={loading}
+              className="w-full mt-4 border border-blue-500 text-blue-300 hover:bg-blue-500/10 py-2 rounded-md font-semibold transition disabled:opacity-50"
+            >
+              Try Demo (No Login)
+            </button>
           )}
 
           <p className="text-sm text-slate-400 mt-4 text-center">
