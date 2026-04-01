@@ -9,6 +9,12 @@ const getAuthToken = () => {
 };
 
 // Helper to make authenticated requests
+const ensureWritable = () => {
+  if (authUtils.isDemoMode()) {
+    throw new Error('Demo mode is read-only. Sign in to save changes.');
+  }
+};
+
 const fetchWithAuth = async (url, options = {}) => {
   const token = getAuthToken();
   
@@ -28,16 +34,31 @@ const fetchWithAuth = async (url, options = {}) => {
   const response = await fetch(url, config);
   
   if (response.status === 401) {
-    throw new Error('Session expired. Please log in again.');
+    const error = new Error('Session expired. Please log in again.');
+    error.status = 401;
+    throw error;
   }
   
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: 'Request failed' }));
+    const payload = await response.json().catch(() => ({ error: 'Request failed' }));
+    const retryAfterSeconds = Number(response.headers.get('retry-after'));
+    const rateLimitResetSeconds = Number(response.headers.get('ratelimit-reset'));
+    const retryAfterMs = Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0
+      ? retryAfterSeconds * 1000
+      : Number.isFinite(rateLimitResetSeconds) && rateLimitResetSeconds > 0
+        ? rateLimitResetSeconds * 1000
+        : null;
+
+    const error = new Error(
+      response.status === 429
+        ? 'Rate limit exceeded. Please wait a moment and try again.'
+        : (payload.error || `HTTP error! status: ${response.status}`)
+    );
+    error.status = response.status;
+    error.retryAfterMs = retryAfterMs;
+
     // Handle different error types
-    if (response.status === 429) {
-      throw new Error('Rate limit exceeded. Please wait a moment and try again.');
-    }
-    throw new Error(error.error || `HTTP error! status: ${response.status}`);
+    throw error;
   }
   
   return response.json();
@@ -68,6 +89,7 @@ export const movieApi = {
   
   // Add movie to user's library (with caching)
   addMovie: async (movieId, rating, watchedDate = new Date(), movieDetails = null) => {
+    ensureWritable();
     // Cache movie details first if provided
     if (movieDetails) {
       await movieApi.cacheMovie(movieDetails);
@@ -95,6 +117,7 @@ export const movieApi = {
 
   // Update movie rating
   updateRating: async (movieId, rating) => {
+    ensureWritable();
     return fetchWithAuth(`${API_BASE_URL}/api/movies/${movieId}/rating`, {
       method: 'PUT',
       body: JSON.stringify({ rating }),
@@ -103,6 +126,7 @@ export const movieApi = {
 
   // Delete movie from library
   deleteMovie: async (movieId) => {
+    ensureWritable();
     return fetchWithAuth(`${API_BASE_URL}/api/movies/${movieId}`, {
       method: 'DELETE',
     });
@@ -127,6 +151,7 @@ export const movieApi = {
 
   // Set movie at specific position (0-3)
   setShowcasePosition: async (position, movieId) => {
+    ensureWritable();
     // Convert frontend position (0-3) to backend position (1-4)
     const backendPosition = position + 1;
     
@@ -138,6 +163,7 @@ export const movieApi = {
 
   // Remove movie from showcase position
   removeShowcasePosition: async (position) => {
+    ensureWritable();
     // Convert frontend position (0-3) to backend position (1-4)
     const backendPosition = position + 1;
     
@@ -155,6 +181,7 @@ export const movieApi = {
 
   // Add movie to watchlist (with caching)
   addToWatchlist: async (movieId, movieDetails = null) => {
+    ensureWritable();
     // Cache movie details first if provided
     if (movieDetails) {
       await movieApi.cacheMovie(movieDetails);
@@ -168,6 +195,7 @@ export const movieApi = {
 
   // Remove movie from watchlist
   removeFromWatchlist: async (movieId) => {
+    ensureWritable();
     return fetchWithAuth(`${API_BASE_URL}/api/movies/watchlist/${movieId}`, {
       method: 'DELETE',
     });

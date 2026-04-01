@@ -145,6 +145,70 @@ const parseImportCsv = (csvText) => {
   }).filter((entry) => entry.title && entry.rating && entry.rating > 0);
 };
 
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const normalizeTitleForMatch = (value = '') =>
+  String(value)
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/&/g, 'and')
+    .replace(/[^a-z0-9]/g, '');
+
+const pickBestSearchMatch = (entry, results) => {
+  if (!Array.isArray(results) || results.length === 0) return null;
+
+  const targetTitle = normalizeTitleForMatch(entry.title);
+  if (!targetTitle) return null;
+
+  const exactTitleMatches = results.filter((movie) => normalizeTitleForMatch(movie.title) === targetTitle);
+
+  if (entry.year) {
+    const exactYear = exactTitleMatches.find((movie) => Number(movie.year) === Number(entry.year));
+    if (exactYear) return exactYear;
+
+    // Conservative fallback: allow +/- 1 year only when title is exact.
+    const nearYear = exactTitleMatches.find((movie) => {
+      const movieYear = Number(movie.year);
+      return Number.isFinite(movieYear) && Math.abs(movieYear - Number(entry.year)) <= 1;
+    });
+    if (nearYear) return nearYear;
+
+    return null;
+  }
+
+  if (exactTitleMatches.length === 1) {
+    return exactTitleMatches[0];
+  }
+
+  return null;
+};
+
+const addMovieWithRetry = async ({ movieId, rating, watchedDate, maxAttempts = 6 }) => {
+  let attempt = 0;
+
+  while (attempt < maxAttempts) {
+    attempt += 1;
+    try {
+      await movieApi.addMovie(movieId, rating, watchedDate || new Date(), null);
+      return true;
+    } catch (err) {
+      const isRateLimited = err?.status === 429 || /rate limit/i.test(err?.message || '');
+      if (!isRateLimited || attempt >= maxAttempts) {
+        return false;
+      }
+
+      const retryDelayMs = Number.isFinite(err?.retryAfterMs) && err.retryAfterMs > 0
+        ? err.retryAfterMs + 250
+        : Math.min(30000, 2500 * attempt);
+
+      await sleep(retryDelayMs);
+    }
+  }
+
+  return false;
+};
+
 export default function AddMovies({ onMovieAdded }) {
   const [isOpen, setIsOpen] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
@@ -231,9 +295,13 @@ export default function AddMovies({ onMovieAdded }) {
 
       let imported = 0;
       let skipped = 0;
+      let unmatched = 0;
 
       for (const entry of entries) {
         try {
+          // Keep request pace safely below backend limiter for large imports.
+          await sleep(950);
+
           let matchedMovie = null;
 
           if (entry.tmdbId) {
@@ -247,18 +315,26 @@ export default function AddMovies({ onMovieAdded }) {
           if (!matchedMovie) {
             const query = entry.year ? `${entry.title} ${entry.year}` : entry.title;
             const results = await tmdbService.searchMovies(query);
-            matchedMovie = entry.year
-              ? results.find((movie) => Number(movie.year) === Number(entry.year)) || results[0]
-              : results[0];
+            matchedMovie = pickBestSearchMatch(entry, results);
           }
 
           if (!matchedMovie?.id) {
             skipped += 1;
+            unmatched += 1;
             continue;
           }
 
-          await movieApi.addMovie(matchedMovie.id, entry.rating, entry.watchedDate || new Date(), null);
-          imported += 1;
+          const saved = await addMovieWithRetry({
+            movieId: matchedMovie.id,
+            rating: entry.rating,
+            watchedDate: entry.watchedDate || new Date(),
+          });
+
+          if (saved) {
+            imported += 1;
+          } else {
+            skipped += 1;
+          }
         } catch {
           skipped += 1;
         }
@@ -268,7 +344,8 @@ export default function AddMovies({ onMovieAdded }) {
         onMovieAdded();
       }
 
-      alert(`CSV import finished. Imported ${imported} movie${imported === 1 ? '' : 's'}${skipped > 0 ? `, skipped ${skipped}` : ''}.`);
+      const unmatchedText = unmatched > 0 ? ` (${unmatched} unmatched/ambiguous title-year pairs)` : '';
+      alert(`CSV import finished. Imported ${imported} movie${imported === 1 ? '' : 's'}${skipped > 0 ? `, skipped ${skipped}${unmatchedText}` : ''}.`);
     } catch (err) {
       setError(err.message || 'CSV import failed. Please try a different export file.');
     } finally {
