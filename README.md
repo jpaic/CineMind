@@ -6,12 +6,34 @@ CineMind is a personalized movie discovery platform that helps users find films 
 
 ## Table of Contents
 
+- [Demo Version](#demo-version)
 - [Overview](#overview)
 - [Key Features](#key-features)
 - [Tech Stack](#tech-stack)
 - [ML & Recommendation System](#ml--recommendation-system)
 - [License](#license)
 - [Portfolio Demo Mode](#portfolio-demo-mode)
+
+---
+
+## Demo Version
+
+Want a fast way to experience CineMind without signing up? Use the built-in demo route:
+
+- **How it works**: opening `/demo` starts a temporary authenticated session automatically.  
+- **Session type**: **read-only** (safe for portfolio/recruiter walkthroughs).  
+- **What you can test**:  
+  - Dashboard and profile views  
+  - Discover/recommendation flow  
+  - Navigation and UI/UX across tabs  
+- **What is disabled in demo mode**:  
+  - Adding or deleting movies  
+  - Updating ratings  
+  - Watchlist writes  
+  - Account/profile mutation actions  
+- **Visual indicator**: the app shows a **Demo Mode (Read-only)** banner while the session is active.  
+
+This keeps the live demo stable while still showcasing the full product experience and recommendation pipeline.
 
 ---
 
@@ -35,14 +57,9 @@ The recommendations are driven by a **machine learning model** that predicts mov
   - **Discover**: ML-generated movie recommendations.  
   - **Rate Movies**: Add or rate movies to improve recommendations.  
   - **My Movies**: Library of your rated movies.  
-  - **Profile**: Summary of your preferences and activity.  
+  - **Profile**: Summary of your preferences and activity.
+- The recommendations are driven by a **machine learning model** that predicts movies based on your previous ratings
 - **Responsive Design**: Works on mobile, tablet, and desktop.  
-- **ML-powered Recommendations**: Personalized and evolving based on user input.  
-
----
-
-## Tech Stack
-
 - **Frontend**: React, Vite, Tailwind CSS  
 - **Backend / ML**: Python, Flask/FastAPI, scikit-learn 
 - **Database**: PostgreSQL

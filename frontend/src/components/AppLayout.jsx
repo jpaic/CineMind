@@ -1,5 +1,9 @@
 import Navbar from './Navbar';
 import Footer from './Footer';
+import { authUtils } from '../utils/authUtils';
+
+export default function AppLayout({ children, onLogout }) {
+  const demoMode = authUtils.isDemoMode();
 
 export default function AppLayout({ children, onLogout }) {
   return (
