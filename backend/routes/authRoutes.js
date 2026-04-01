@@ -25,7 +25,7 @@ router.post("/login", authLimiter, login);
 router.post("/demo-session", authLimiter, createDemoSession);
 
 router.get("/verify", authRequired, verify);
-router.get("/export", authRequired, blockDemoWrites, exportData);
+router.get("/export", authRequired, exportData);
 router.delete("/library", authRequired, blockDemoWrites, resetLibrary);
 router.put("/password", authRequired, blockDemoWrites, requestPasswordChange);
 router.post("/password/confirm", confirmPasswordChange);
