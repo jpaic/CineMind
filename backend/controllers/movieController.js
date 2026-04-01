@@ -378,3 +378,122 @@ export async function cleanupCache(req, res) {
     res.status(500).json({ success: false, error: "Failed to cleanup cache" });
   }
 }
+
+function parseBoolean(value, defaultValue = false) {
+  if (value === undefined || value === null || value === "") {
+    return defaultValue;
+  }
+
+  if (typeof value === "boolean") {
+    return value;
+  }
+
+  const normalized = String(value).trim().toLowerCase();
+  return normalized === "1" || normalized === "true" || normalized === "yes";
+}
+
+function normalizeCachedGenres(genresValue) {
+  if (!genresValue) return [];
+  if (Array.isArray(genresValue)) return genresValue;
+
+  if (typeof genresValue === "string") {
+    try {
+      const parsed = JSON.parse(genresValue);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return genresValue.split(",").map(item => item.trim()).filter(Boolean);
+    }
+  }
+
+  return [];
+}
+
+function normalizePosterPath(posterPath) {
+  if (!posterPath) return null;
+  if (String(posterPath).startsWith("http")) return posterPath;
+  return `https://image.tmdb.org/t/p/w500${posterPath}`;
+}
+
+export async function getRecommendations(req, res) {
+  try {
+    const userId = req.user.id;
+    const limit = parseNumber(req.query.limit) ?? 30;
+    const refresh = parseBoolean(req.query.refresh, false);
+
+    const mlServiceUrl = process.env.ML_SERVICE_URL;
+    const mlInternalToken = process.env.ML_INTERNAL_TOKEN;
+
+    if (!mlServiceUrl || !mlInternalToken) {
+      return res.status(500).json({
+        success: false,
+        error: "ML service is not configured on backend",
+      });
+    }
+
+    const endpoint = `${mlServiceUrl.replace(/\/$/, "")}/recommend/${userId}?limit=${limit}`;
+    const mlResponse = await fetch(endpoint, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Internal-Token": mlInternalToken,
+      },
+    });
+
+    if (!mlResponse.ok) {
+      const rawError = await mlResponse.text();
+      return res.status(502).json({
+        success: false,
+        error: "Failed to fetch recommendations from ML service",
+        details: rawError,
+      });
+    }
+
+    const payload = await mlResponse.json();
+    const recommendations = Array.isArray(payload.recommendations) ? payload.recommendations : [];
+    const movieIds = recommendations.map(item => parseNumber(item.movie_id)).filter(Boolean);
+
+    let cacheByMovieId = new Map();
+
+    if (movieIds.length > 0) {
+      const cacheResult = await db.query(
+        `SELECT movie_id, title, year, director, genres, poster_path
+         FROM movie_cache
+         WHERE movie_id = ANY($1::int[])`,
+        [movieIds]
+      );
+
+      cacheByMovieId = new Map(cacheResult.rows.map(row => [Number(row.movie_id), row]));
+    }
+
+    const hydratedRecommendations = recommendations.map((item, index) => {
+      const movieId = parseNumber(item.movie_id);
+      const cached = cacheByMovieId.get(movieId) || null;
+      const genres = normalizeCachedGenres(cached?.genres);
+      const score = parseNumber(item.score);
+
+      return {
+        id: movieId,
+        rank: index + 1,
+        score,
+        rating: score,
+        title: cached?.title || item.title || `TMDB ${movieId}`,
+        year: cached?.year || item.year || null,
+        poster: normalizePosterPath(cached?.poster_path || item.poster_path),
+        director: cached?.director || null,
+        genres,
+        reasons: Array.isArray(item.reasons) ? item.reasons : [],
+      };
+    });
+
+    res.json({
+      success: true,
+      type: payload.type || "personalized",
+      refresh,
+      rated_movies_count: payload.rated_movies_count ?? null,
+      recommendations: hydratedRecommendations,
+    });
+  } catch (error) {
+    console.error("Get recommendations error:", error);
+    res.status(500).json({ success: false, error: "Failed to get recommendations" });
+  }
+}

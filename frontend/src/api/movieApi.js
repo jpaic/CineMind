@@ -178,6 +178,16 @@ export const movieApi = {
     return fetchWithAuth(`${API_BASE_URL}/api/movies/watchlist/check/${movieId}`);
   },
 
+  // ===== RECOMMENDATION ENDPOINTS =====
+  getRecommendations: async (limit = 30, refresh = false) => {
+    const params = new URLSearchParams({
+      limit: String(limit),
+      refresh: String(refresh),
+    });
+
+    return fetchWithAuth(`${API_BASE_URL}/api/movies/recommendations?${params.toString()}`);
+  },
+
   // ===== CACHE ENDPOINTS (PUBLIC) =====
   
   // Get cached movie

@@ -56,6 +56,7 @@ app.use((req, res) => {
       "POST /api/movies/watchlist/add",
       "DELETE /api/movies/watchlist/:movieId",
       "GET /api/movies/watchlist/check/:movieId",
+      "GET /api/movies/recommendations",
       "GET /api/movies/cache/:movieId",
       "POST /api/movies/cache",
       "POST /api/movies/cache/bulk"

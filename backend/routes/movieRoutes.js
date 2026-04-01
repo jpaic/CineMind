@@ -38,6 +38,9 @@ router.get("/watchlist/check/:movieId", authRequired, movieController.checkWatch
 
 // ===== CACHE ROUTES (NO AUTH - PUBLIC) =====
 
+// ===== RECOMMENDATION ROUTES (AUTH REQUIRED) =====
+router.get("/recommendations", authRequired, movieController.getRecommendations);
+
 // Get cached movie
 router.get("/cache/:movieId", movieController.getCachedMovie);
 
