@@ -3,8 +3,64 @@ import { RefreshCw, SlidersHorizontal } from 'lucide-react';
 import Card from '../components/Card';
 import FilterBar from '../components/FilterBar';
 import { movieApi } from '../api/movieApi';
-import { tmdbService } from '../api/tmdb';
 import FilmReelLoading from '../components/FilmReelLoading';
+
+const DISCOVER_CACHE_KEY = 'discoverRecommendationsV1';
+const DISCOVER_CACHE_TTL_MS = 5 * 60 * 1000;
+
+const normalizeRecommendations = (items) => {
+  if (!Array.isArray(items)) return [];
+
+  const seenIds = new Set();
+
+  return items
+    .map((item) => ({
+      ...item,
+      id: Number(item?.id),
+      title: item?.title || 'Unknown',
+      genres: Array.isArray(item?.genres) ? item.genres : [],
+      rating: Number.isFinite(Number(item?.rating)) ? Number(item.rating) : null,
+    }))
+    .filter((item) => Number.isInteger(item.id) && item.id > 0)
+    .filter((item) => {
+      if (seenIds.has(item.id)) return false;
+      seenIds.add(item.id);
+      return true;
+    });
+};
+
+const readDiscoverCache = () => {
+  try {
+    const raw = sessionStorage.getItem(DISCOVER_CACHE_KEY);
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw);
+    if (!parsed?.savedAt || !Array.isArray(parsed?.items)) return null;
+
+    if ((Date.now() - Number(parsed.savedAt)) > DISCOVER_CACHE_TTL_MS) {
+      sessionStorage.removeItem(DISCOVER_CACHE_KEY);
+      return null;
+    }
+
+    return normalizeRecommendations(parsed.items);
+  } catch {
+    return null;
+  }
+};
+
+const writeDiscoverCache = (items) => {
+  try {
+    sessionStorage.setItem(
+      DISCOVER_CACHE_KEY,
+      JSON.stringify({
+        savedAt: Date.now(),
+        items,
+      })
+    );
+  } catch {
+    // no-op
+  }
+};
 
 export default function Discover() {
   const [movies, setMovies] = useState([]);
@@ -13,14 +69,29 @@ export default function Discover() {
   const [error, setError] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
 
-  const fetchRecommendations = async () => {
+  const applyMovies = (items) => {
+    const normalized = normalizeRecommendations(items);
+    setMovies(normalized);
+    setFilteredMovies(normalized);
+    return normalized;
+  };
+
+  const fetchRecommendations = async ({ forceRefresh = false } = {}) => {
     try {
       setError(null);
-      
-      // TODO: Replace with actual recommendation API call
-      // For now, just return empty array
-      setMovies([]);
-      setFilteredMovies([]);
+
+      if (!forceRefresh) {
+        const cached = readDiscoverCache();
+        if (cached) {
+          applyMovies(cached);
+          setLoading(false);
+          return;
+        }
+      }
+
+      const response = await movieApi.getRecommendations(30, forceRefresh);
+      const items = applyMovies(response?.recommendations || []);
+      writeDiscoverCache(items);
     } catch (err) {
       setError(err.message || 'Failed to load recommendations');
     } finally {
@@ -35,27 +106,24 @@ export default function Discover() {
 
   const handleRefresh = () => {
     setRefreshing(true);
-    fetchRecommendations();
+    fetchRecommendations({ forceRefresh: true });
   };
 
   const handleFilterChange = (filters) => {
     let filtered = [...movies];
 
-    // Filter by decade
     if (filters.decade && filters.decade !== 'all') {
       const decadeStart = parseInt(filters.decade);
       const decadeEnd = decadeStart + 9;
       filtered = filtered.filter(m => m.year >= decadeStart && m.year <= decadeEnd);
     }
 
-    // Filter by genre
     if (filters.genre && filters.genre !== 'all') {
-      filtered = filtered.filter(m => 
+      filtered = filtered.filter(m =>
         m.genres && m.genres.some(g => g.toLowerCase() === filters.genre.toLowerCase())
       );
     }
 
-    // Filter by rating range
     if (filters.ratingMin !== undefined) {
       filtered = filtered.filter(m => m.rating >= filters.ratingMin);
     }
@@ -63,7 +131,6 @@ export default function Discover() {
       filtered = filtered.filter(m => m.rating <= filters.ratingMax);
     }
 
-    // Sort
     if (filters.sortBy === 'rating-desc') {
       filtered.sort((a, b) => (b.rating || 0) - (a.rating || 0));
     } else if (filters.sortBy === 'rating-asc') {
@@ -85,7 +152,7 @@ export default function Discover() {
     return (
       <div className="flex flex-col w-full bg-slate-950 text-slate-50 min-h-screen px-6 py-12 relative">
         <FilmReelLoading isVisible={true} message="Loading recommendations..." blocking={false} />
-        
+
         <div className="max-w-7xl mx-auto w-full">
           <div className="flex items-center justify-between mb-2">
             <h2 className="text-3xl font-bold">Recommended For You</h2>
@@ -135,29 +202,34 @@ export default function Discover() {
         </p>
 
         {movies.length > 0 && (
-          <FilterBar 
-            movies={movies} 
+          <FilterBar
+            movies={movies}
             onFilterChange={handleFilterChange}
             showRatingFilter={true}
           />
         )}
 
-        {filteredMovies.length > 0 ? (
+        {movies.length === 0 ? (
+          <div className="text-center py-20">
+            <SlidersHorizontal className="w-16 h-16 mx-auto mb-4 text-slate-700" />
+            <p className="text-slate-400 text-lg">No recommendations yet</p>
+            <p className="text-slate-500 text-sm mt-2">Rate a few more movies to personalize your Discover feed</p>
+          </div>
+        ) : filteredMovies.length === 0 ? (
+          <div className="text-center py-20">
+            <p className="text-slate-400 text-lg">No films match your filters</p>
+            <p className="text-slate-500 text-sm mt-2">Try adjusting your filter criteria</p>
+          </div>
+        ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
             {filteredMovies.map((movie, index) => (
-              <Card 
-                key={movie.id} 
-                movie={movie} 
+              <Card
+                key={movie.id}
+                movie={movie}
                 showRating={true}
                 index={index}
               />
             ))}
-          </div>
-        ) : (
-          <div className="text-center py-20">
-            <SlidersHorizontal className="w-16 h-16 mx-auto mb-4 text-slate-700" />
-            <p className="text-slate-400 text-lg">No recommendations yet</p>
-            <p className="text-slate-500 text-sm mt-2">Rate more films to get personalized recommendations</p>
           </div>
         )}
       </div>
