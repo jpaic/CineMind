@@ -28,16 +28,31 @@ const fetchWithAuth = async (url, options = {}) => {
   const response = await fetch(url, config);
   
   if (response.status === 401) {
-    throw new Error('Session expired. Please log in again.');
+    const error = new Error('Session expired. Please log in again.');
+    error.status = 401;
+    throw error;
   }
   
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: 'Request failed' }));
+    const payload = await response.json().catch(() => ({ error: 'Request failed' }));
+    const retryAfterSeconds = Number(response.headers.get('retry-after'));
+    const rateLimitResetSeconds = Number(response.headers.get('ratelimit-reset'));
+    const retryAfterMs = Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0
+      ? retryAfterSeconds * 1000
+      : Number.isFinite(rateLimitResetSeconds) && rateLimitResetSeconds > 0
+        ? rateLimitResetSeconds * 1000
+        : null;
+
+    const error = new Error(
+      response.status === 429
+        ? 'Rate limit exceeded. Please wait a moment and try again.'
+        : (payload.error || `HTTP error! status: ${response.status}`)
+    );
+    error.status = response.status;
+    error.retryAfterMs = retryAfterMs;
+
     // Handle different error types
-    if (response.status === 429) {
-      throw new Error('Rate limit exceeded. Please wait a moment and try again.');
-    }
-    throw new Error(error.error || `HTTP error! status: ${response.status}`);
+    throw error;
   }
   
   return response.json();

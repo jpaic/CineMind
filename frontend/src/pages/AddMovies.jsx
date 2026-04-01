@@ -1,41 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { X, Search, Star, Loader, CalendarDays, Upload } from 'lucide-react';
+import Papa from 'papaparse';
 import { tmdbService } from '../api/tmdb';
 import { movieApi } from '../api/movieApi';
 
 const normalizeHeader = (value = '') => value.toLowerCase().replace(/[^a-z0-9]/g, '');
-
-const parseCsvRow = (row) => {
-  const values = [];
-  let current = '';
-  let insideQuotes = false;
-
-  for (let i = 0; i < row.length; i += 1) {
-    const char = row[i];
-    const nextChar = row[i + 1];
-
-    if (char === '"') {
-      if (insideQuotes && nextChar === '"') {
-        current += '"';
-        i += 1;
-      } else {
-        insideQuotes = !insideQuotes;
-      }
-      continue;
-    }
-
-    if (char === ',' && !insideQuotes) {
-      values.push(current.trim());
-      current = '';
-      continue;
-    }
-
-    current += char;
-  }
-
-  values.push(current.trim());
-  return values;
-};
 
 const toFivePointRating = (value) => {
   if (value === null || value === undefined || value === '') {
@@ -94,17 +63,48 @@ const parseTmdbId = (value) => {
   return numeric;
 };
 
-const parseImportCsv = (csvText) => {
-  const lines = csvText
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean);
+const parseWatchedDate = (value) => {
+  if (!value) return null;
+  const raw = String(value).trim();
+  if (!raw) return null;
 
-  if (lines.length < 2) {
+  const isoLike = new Date(raw);
+  if (!Number.isNaN(isoLike.getTime())) {
+    return isoLike;
+  }
+
+  const dmyMatch = raw.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})$/);
+  if (dmyMatch) {
+    const day = Number(dmyMatch[1]);
+    const month = Number(dmyMatch[2]);
+    const year = Number(dmyMatch[3]);
+    if (day >= 1 && day <= 31 && month >= 1 && month <= 12 && year >= 1800) {
+      const parsed = new Date(Date.UTC(year, month - 1, day));
+      if (!Number.isNaN(parsed.getTime())) return parsed;
+    }
+  }
+
+  return null;
+};
+
+const parseImportCsv = (csvText) => {
+  const parsed = Papa.parse(csvText, {
+    header: true,
+    skipEmptyLines: 'greedy',
+    delimiter: '',
+    transformHeader: (header) => normalizeHeader(header),
+  });
+
+  if (parsed.errors?.length) {
+    // Non-fatal parse errors are common in CSV exports; continue with parsed rows.
+  }
+
+  const rows = Array.isArray(parsed.data) ? parsed.data : [];
+  if (rows.length === 0) {
     return [];
   }
 
-  const headerValues = parseCsvRow(lines[0]).map(normalizeHeader);
+  const headerValues = Object.keys(rows[0] || {});
 
   const findHeaderIndex = (...keys) => {
     for (const key of keys) {
@@ -127,17 +127,86 @@ const parseImportCsv = (csvText) => {
     return [];
   }
 
-  return lines.slice(1).map((line) => {
-    const values = parseCsvRow(line);
+  return rows.map((values) => {
+    const getValue = (index) => {
+      if (index < 0) return null;
+      const key = headerValues[index];
+      return key ? values[key] : null;
+    };
+
     return {
-      title: values[titleIndex]?.replace(/^"|"$/g, '').trim(),
-      year: values[yearIndex] ? Number(values[yearIndex]) || null : null,
-      rating: toFivePointRating(values[ratingIndex]),
-      watchedDate: values[watchedDateIndex] || null,
-      tmdbId: tmdbIdIndex >= 0 ? parseTmdbId(values[tmdbIdIndex]) : null,
-      imdbId: imdbIdIndex >= 0 ? normalizeImdbId(values[imdbIdIndex]) : null,
+      title: String(getValue(titleIndex) || '').replace(/^"|"$/g, '').trim(),
+      year: getValue(yearIndex) ? Number(getValue(yearIndex)) || null : null,
+      rating: toFivePointRating(getValue(ratingIndex)),
+      watchedDate: parseWatchedDate(getValue(watchedDateIndex)),
+      tmdbId: tmdbIdIndex >= 0 ? parseTmdbId(getValue(tmdbIdIndex)) : null,
+      imdbId: imdbIdIndex >= 0 ? normalizeImdbId(getValue(imdbIdIndex)) : null,
     };
   }).filter((entry) => entry.title && entry.rating && entry.rating > 0);
+};
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const normalizeTitleForMatch = (value = '') =>
+  String(value)
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/&/g, 'and')
+    .replace(/[^a-z0-9]/g, '');
+
+const pickBestSearchMatch = (entry, results) => {
+  if (!Array.isArray(results) || results.length === 0) return null;
+
+  const targetTitle = normalizeTitleForMatch(entry.title);
+  if (!targetTitle) return null;
+
+  const exactTitleMatches = results.filter((movie) => normalizeTitleForMatch(movie.title) === targetTitle);
+
+  if (entry.year) {
+    const exactYear = exactTitleMatches.find((movie) => Number(movie.year) === Number(entry.year));
+    if (exactYear) return exactYear;
+
+    // Conservative fallback: allow +/- 1 year only when title is exact.
+    const nearYear = exactTitleMatches.find((movie) => {
+      const movieYear = Number(movie.year);
+      return Number.isFinite(movieYear) && Math.abs(movieYear - Number(entry.year)) <= 1;
+    });
+    if (nearYear) return nearYear;
+
+    return null;
+  }
+
+  if (exactTitleMatches.length === 1) {
+    return exactTitleMatches[0];
+  }
+
+  return null;
+};
+
+const addMovieWithRetry = async ({ movieId, rating, watchedDate, maxAttempts = 6 }) => {
+  let attempt = 0;
+
+  while (attempt < maxAttempts) {
+    attempt += 1;
+    try {
+      await movieApi.addMovie(movieId, rating, watchedDate || new Date(), null);
+      return true;
+    } catch (err) {
+      const isRateLimited = err?.status === 429 || /rate limit/i.test(err?.message || '');
+      if (!isRateLimited || attempt >= maxAttempts) {
+        return false;
+      }
+
+      const retryDelayMs = Number.isFinite(err?.retryAfterMs) && err.retryAfterMs > 0
+        ? err.retryAfterMs + 250
+        : Math.min(30000, 2500 * attempt);
+
+      await sleep(retryDelayMs);
+    }
+  }
+
+  return false;
 };
 
 export default function AddMovies({ onMovieAdded }) {
@@ -226,9 +295,13 @@ export default function AddMovies({ onMovieAdded }) {
 
       let imported = 0;
       let skipped = 0;
+      let unmatched = 0;
 
       for (const entry of entries) {
         try {
+          // Keep request pace safely below backend limiter for large imports.
+          await sleep(950);
+
           let matchedMovie = null;
 
           if (entry.tmdbId) {
@@ -242,19 +315,26 @@ export default function AddMovies({ onMovieAdded }) {
           if (!matchedMovie) {
             const query = entry.year ? `${entry.title} ${entry.year}` : entry.title;
             const results = await tmdbService.searchMovies(query);
-            matchedMovie = entry.year
-              ? results.find((movie) => Number(movie.year) === Number(entry.year)) || results[0]
-              : results[0];
+            matchedMovie = pickBestSearchMatch(entry, results);
           }
 
           if (!matchedMovie?.id) {
             skipped += 1;
+            unmatched += 1;
             continue;
           }
 
-          const details = await tmdbService.getMovieDetails(matchedMovie.id);
-          await movieApi.addMovie(matchedMovie.id, entry.rating, entry.watchedDate || new Date(), details || matchedMovie);
-          imported += 1;
+          const saved = await addMovieWithRetry({
+            movieId: matchedMovie.id,
+            rating: entry.rating,
+            watchedDate: entry.watchedDate || new Date(),
+          });
+
+          if (saved) {
+            imported += 1;
+          } else {
+            skipped += 1;
+          }
         } catch {
           skipped += 1;
         }
@@ -264,7 +344,8 @@ export default function AddMovies({ onMovieAdded }) {
         onMovieAdded();
       }
 
-      alert(`CSV import finished. Imported ${imported} movie${imported === 1 ? '' : 's'}${skipped > 0 ? `, skipped ${skipped}` : ''}.`);
+      const unmatchedText = unmatched > 0 ? ` (${unmatched} unmatched/ambiguous title-year pairs)` : '';
+      alert(`CSV import finished. Imported ${imported} movie${imported === 1 ? '' : 's'}${skipped > 0 ? `, skipped ${skipped}${unmatchedText}` : ''}.`);
     } catch (err) {
       setError(err.message || 'CSV import failed. Please try a different export file.');
     } finally {

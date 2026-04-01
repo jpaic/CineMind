@@ -274,23 +274,26 @@ async def score_candidates(user_id: int, limit: int) -> dict[str, Any]:
         genre_score = sum(genre_weights[g] for g in features["genres"] if g in genre_weights)
         if genre_score != 0:
             score += genre_score
-            reasons.append("genre match")
+            if genre_score > 0:
+                reasons.append("genre match")
 
         actor_score = sum(actor_weights[a] for a in features["actors"] if a in actor_weights)
         if actor_score != 0:
             score += actor_score
-            reasons.append("actor match")
+            if actor_score > 0:
+                reasons.append("actor match")
 
         if features["director"] in director_weights:
             director_score = director_weights[features["director"]]
             score += director_score
-            if director_score != 0:
+            if director_score > 0:
                 reasons.append("director match")
 
         keyword_score = sum(keyword_weights[k] for k in features["keywords"] if k in keyword_weights)
         if keyword_score != 0:
             score += keyword_score
-            reasons.append("keyword match")
+            if keyword_score > 0:
+                reasons.append("keyword match")
 
         scored.append(
             {
@@ -300,6 +303,17 @@ async def score_candidates(user_id: int, limit: int) -> dict[str, Any]:
                 "poster_path": features["poster_path"],
                 "vote_average": features.get("vote_average"),
                 "score": round(score, 4),
+                "positive_score": round(max(genre_score, 0) + max(actor_score, 0) + max(keyword_score, 0) + max(director_weights.get(features["director"], 0) if features["director"] in director_weights else 0, 0), 4),
+                "positive_signal_count": sum(
+                    1
+                    for component in (
+                        genre_score,
+                        actor_score,
+                        director_weights[features["director"]] if features["director"] in director_weights else 0.0,
+                        keyword_score,
+                    )
+                    if component > 0
+                ),
                 "reasons": sorted(set(reasons))[:3],
             }
         )
@@ -315,9 +329,19 @@ async def score_candidates(user_id: int, limit: int) -> dict[str, Any]:
         seen_scored_ids.add(movie_id)
         deduped_scored.append(item)
 
-    # For users with very few ratings, return top items even if score is 0.
-    min_score = 0.0 if len(user_rows) < MIN_RATED_MOVIES else 0.01
-    filtered = [item for item in deduped_scored if item["score"] >= min_score]
+    # Require at least one positive match signal so the tail-end recommendations stay relevant.
+    if len(user_rows) < MIN_RATED_MOVIES:
+        filtered = [
+            item
+            for item in deduped_scored
+            if item["positive_signal_count"] > 0 and item["positive_score"] >= 0.05
+        ]
+    else:
+        filtered = [
+            item
+            for item in deduped_scored
+            if item["score"] >= 0.05 and item["positive_signal_count"] > 0
+        ]
 
     return {
         "type": "personalized" if len(user_rows) >= MIN_RATED_MOVIES else "sparse_personalized",
