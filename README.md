@@ -11,6 +11,7 @@ CineMind is a personalized movie discovery platform that helps users find films 
 - [Tech Stack](#tech-stack)
 - [ML & Recommendation System](#ml--recommendation-system)
 - [License](#license)
+- [Portfolio Demo Mode](#portfolio-demo-mode)
 
 ---
 
@@ -64,6 +65,10 @@ The recommendations are driven by a **machine learning model** that predicts mov
   - Recommendations update as users rate/add movies.  
 
 ---
+
+## Portfolio Demo Mode
+
+Want recruiters to test the app without creating an account? Use the read-only demo strategy in [`docs/portfolio-demo-mode.md`](docs/portfolio-demo-mode.md).
 
 ## License
 

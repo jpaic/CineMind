@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Route, Routes, Navigate, useNavigate } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { authUtils } from './utils/authUtils';
 import AppLayout from './components/AppLayout';
 import Landing from './pages/Landing';
@@ -21,20 +21,34 @@ import PopularMovies from './pages/PopularMovies';
 import PasswordChangeResult from './pages/PasswordChangeResult';
 import AccountDeletionResult from './pages/AccountDeletionResult';
 import FilmTransition from './components/FilmTransition';
+import { startDemoSession } from './api/auth';
 
 function AppContent() {
   const [loggedIn, setLoggedIn] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showTransition, setShowTransition] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Initialize auth state on mount - verify token with backend
   useEffect(() => {
     const initAuth = async () => {
       
-      // First check if token exists
+      // Start demo session if /demo is opened without auth
+      const isDemoRoute = location.pathname === '/demo';
       const hasToken = authUtils.isAuthenticated();
-      
+
+      if (isDemoRoute && !hasToken) {
+        const demoRes = await startDemoSession();
+        if (demoRes.success) {
+          authUtils.setAuth(demoRes.token, demoRes.username, false, true);
+          setLoggedIn(true);
+          setLoading(false);
+          navigate('/home', { replace: true });
+          return;
+        }
+      }
+
       if (!hasToken) {
         setLoggedIn(false);
         setLoading(false);
@@ -51,7 +65,7 @@ function AppContent() {
     };
 
     initAuth();
-  }, []);
+  }, [location.pathname, navigate]);
 
   // Handle start of transition from Landing page (navigate during peak)
   const handleStartTransition = () => {
@@ -97,6 +111,7 @@ function AppContent() {
       )}
       
       <Routes>
+        <Route path="/demo" element={<div className="w-full h-screen flex items-center justify-center bg-slate-950 text-slate-50">Starting demo session...</div>} />
         {/* Public Routes */}
         <Route 
           path="/" 
