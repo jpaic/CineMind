@@ -3,7 +3,6 @@ import { RefreshCw, SlidersHorizontal } from 'lucide-react';
 import Card from '../components/Card';
 import FilterBar from '../components/FilterBar';
 import { movieApi } from '../api/movieApi';
-import { tmdbService } from '../api/tmdb';
 import FilmReelLoading from '../components/FilmReelLoading';
 
 export default function Discover() {
@@ -16,11 +15,11 @@ export default function Discover() {
   const fetchRecommendations = async () => {
     try {
       setError(null);
-      
-      // TODO: Replace with actual recommendation API call
-      // For now, just return empty array
-      setMovies([]);
-      setFilteredMovies([]);
+      const response = await movieApi.getRecommendations(30, refreshing);
+      const items = Array.isArray(response?.recommendations) ? response.recommendations : [];
+
+      setMovies(items);
+      setFilteredMovies(items);
     } catch (err) {
       setError(err.message || 'Failed to load recommendations');
     } finally {
@@ -157,7 +156,7 @@ export default function Discover() {
           <div className="text-center py-20">
             <SlidersHorizontal className="w-16 h-16 mx-auto mb-4 text-slate-700" />
             <p className="text-slate-400 text-lg">No recommendations yet</p>
-            <p className="text-slate-500 text-sm mt-2">Rate more films to get personalized recommendations</p>
+            <p className="text-slate-500 text-sm mt-2">Rate a few more movies to personalize your Discover feed</p>
           </div>
         )}
       </div>
