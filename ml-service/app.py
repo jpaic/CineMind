@@ -184,6 +184,48 @@ def add_weights(bucket: dict[str, float], keys: list[str], value: float) -> None
         add_weight(bucket, key, value)
 
 
+def decade_start(year: int | None) -> int | None:
+    if not isinstance(year, int):
+        return None
+    if year < 1880:
+        return None
+    return (year // 10) * 10
+
+
+MIN_DECADE_SHARE_FOR_OLDEST = float(os.getenv("MIN_DECADE_SHARE_FOR_OLDEST", "0.05"))
+
+
+def get_candidate_year_window(
+    rated_features: list[dict[str, Any]],
+    total_rated_movies: int,
+) -> tuple[int, int] | None:
+    decade_counts: dict[int, int] = defaultdict(int)
+    for features in rated_features:
+        decade = decade_start(features.get("year"))
+        if decade is not None:
+            decade_counts[decade] += 1
+
+    rated_decades = sorted(decade_counts.keys())
+
+    if not rated_decades:
+        return None
+
+    denominator = max(1, total_rated_movies)
+    min_decade = rated_decades[0]
+    for decade in rated_decades:
+        share = decade_counts[decade] / denominator
+        if share >= MIN_DECADE_SHARE_FOR_OLDEST:
+            min_decade = decade
+            break
+
+    # Keep recommendations near the user's taste era and avoid very old decades.
+    max_decade = rated_decades[-1]
+
+    min_year = min_decade - 20
+    max_year = (max_decade + 10) + 9
+    return (min_year, max_year)
+
+
 async def get_user_ratings(user_id: int) -> list[asyncpg.Record]:
     assert pool is not None
     rows = await pool.fetch(
@@ -320,6 +362,7 @@ async def score_candidates(user_id: int, limit: int) -> dict[str, Any]:
     rated_features = await asyncio.gather(
         *(get_full_movie_features(int(row["movie_id"]), feature_cache) for row in user_rows)
     )
+    candidate_year_window = get_candidate_year_window(rated_features, len(user_rows))
 
     for row, features in zip(user_rows, rated_features):
         rating = float(row["rating"])
@@ -340,6 +383,11 @@ async def score_candidates(user_id: int, limit: int) -> dict[str, Any]:
     scored: list[dict[str, Any]] = []
 
     for movie_id, features in zip(candidate_ids, candidate_features):
+        if candidate_year_window and isinstance(features.get("year"), int):
+            min_year, max_year = candidate_year_window
+            if features["year"] < min_year or features["year"] > max_year:
+                continue
+
         score = 0.0
         reasons: list[str] = []
 
