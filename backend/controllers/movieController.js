@@ -115,6 +115,81 @@ export async function getShowcase(req, res) {
   }
 }
 
+export async function getProfileBootstrap(req, res) {
+  try {
+    const limit = parseNumber(req.query.limit) ?? 50;
+    const offset = parseNumber(req.query.offset) ?? 0;
+
+    const libraryResult = await db.query(
+      `SELECT
+         um.movie_id,
+         um.rating,
+         um.watched_date,
+         um.updated_at,
+         mc.title,
+         mc.year,
+         mc.director,
+         mc.director_id,
+         mc.genres,
+         mc.poster_path
+       FROM user_movies um
+       LEFT JOIN movie_cache mc
+         ON mc.movie_id = um.movie_id
+        AND mc.last_updated > NOW() - INTERVAL '7 days'
+       WHERE um.user_id = $1
+       ORDER BY um.watched_date DESC
+       LIMIT $2 OFFSET $3`,
+      [req.user.id, limit, offset]
+    );
+
+    const showcaseResult = await db.query(
+      `SELECT ups.position, um.movie_id
+       FROM user_profile_showcase ups
+       JOIN user_movies um ON ups.movie_id = um.id
+       WHERE ups.user_id = $1
+       ORDER BY ups.position`,
+      [req.user.id]
+    );
+
+    const statsResult = await db.query(
+      `SELECT
+         COUNT(*)::int AS films_watched,
+         COUNT(*) FILTER (
+           WHERE EXTRACT(YEAR FROM watched_date) = EXTRACT(YEAR FROM CURRENT_DATE)
+         )::int AS watched_this_year,
+         COALESCE(ROUND(AVG(rating)::numeric, 1), 0) AS avg_rating
+       FROM user_movies
+       WHERE user_id = $1`,
+      [req.user.id]
+    );
+
+    const movies = libraryResult.rows.map((row) => ({
+      movie_id: row.movie_id,
+      rating: row.rating,
+      watched_date: row.watched_date,
+      updated_at: row.updated_at,
+      title: row.title,
+      year: row.year,
+      director: row.director,
+      director_id: row.director_id,
+      genres: row.genres,
+      poster_path: row.poster_path,
+    }));
+
+    const showcase = showcaseResult.rows;
+    const stats = statsResult.rows[0] || {
+      films_watched: 0,
+      watched_this_year: 0,
+      avg_rating: 0,
+    };
+
+    res.json({ success: true, movies, showcase, stats });
+  } catch (error) {
+    console.error("Get profile bootstrap error:", error);
+    res.status(500).json({ success: false, error: "Failed to get profile bootstrap data" });
+  }
+}
+
 export async function setShowcasePosition(req, res) {
   const client = await db.connect();
   let transactionStarted = false;

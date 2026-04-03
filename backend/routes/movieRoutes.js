@@ -15,6 +15,7 @@ router.delete("/:movieId", authRequired, blockDemoWrites, movieController.delete
 
 // Get user's showcase
 router.get("/showcase", authRequired, movieController.getShowcase);
+router.get("/profile/bootstrap", authRequired, movieController.getProfileBootstrap);
 
 // Set movie at specific position
 router.put("/showcase/:position", authRequired, blockDemoWrites, movieController.setShowcasePosition);

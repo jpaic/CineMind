@@ -22,6 +22,7 @@ import PasswordChangeResult from './pages/PasswordChangeResult';
 import AccountDeletionResult from './pages/AccountDeletionResult';
 import FilmTransition from './components/FilmTransition';
 import { startDemoSession } from './api/auth';
+import { movieApi } from './api/movieApi';
 
 function AppContent() {
   const [loggedIn, setLoggedIn] = useState(false);
@@ -91,8 +92,23 @@ function AppContent() {
   // Handle logout
   const handleLogout = () => {
     authUtils.clearAuth();
+    movieApi.invalidateProfileBootstrap();
     setLoggedIn(false);
   };
+
+  useEffect(() => {
+    if (!loggedIn || typeof window === 'undefined') return;
+
+    const prefetchOnIdle = () => movieApi.prefetchProfileBootstrap();
+
+    if (typeof window.requestIdleCallback === 'function') {
+      const idleId = window.requestIdleCallback(prefetchOnIdle, { timeout: 1200 });
+      return () => window.cancelIdleCallback(idleId);
+    }
+
+    const timerId = window.setTimeout(prefetchOnIdle, 400);
+    return () => window.clearTimeout(timerId);
+  }, [loggedIn]);
 
   // Show loading spinner while checking auth
   if (loading) {

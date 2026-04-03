@@ -3,6 +3,15 @@ import { bumpCollectionMutationVersion } from '../utils/pageCache';
 
 // frontend/src/api/movieApi.js
 const API_BASE_URL = import.meta.env.VITE_API_URL;
+const PROFILE_BOOTSTRAP_TTL_MS = 2 * 60 * 1000;
+
+let profileBootstrapCache = {
+  data: null,
+  timestamp: 0,
+  token: null,
+};
+
+let profileBootstrapInFlight = null;
 
 const getAuthToken = () => {
   const token = authUtils.getToken();
@@ -85,6 +94,23 @@ const fetchPublic = async (url, options = {}) => {
   return response.json();
 };
 
+const isProfileBootstrapFresh = () => {
+  const token = getAuthToken();
+  if (!token) return false;
+  if (profileBootstrapCache.token !== token) return false;
+
+  return Boolean(profileBootstrapCache.data)
+    && Date.now() - profileBootstrapCache.timestamp < PROFILE_BOOTSTRAP_TTL_MS;
+};
+
+const setProfileBootstrapCache = (data) => {
+  profileBootstrapCache = {
+    data,
+    timestamp: Date.now(),
+    token: getAuthToken(),
+  };
+};
+
 export const movieApi = {
   // ===== LIBRARY ENDPOINTS =====
   
@@ -106,6 +132,7 @@ export const movieApi = {
     });
 
     bumpCollectionMutationVersion();
+    movieApi.invalidateProfileBootstrap();
     return response;
   },
 
@@ -128,6 +155,7 @@ export const movieApi = {
     });
 
     bumpCollectionMutationVersion();
+    movieApi.invalidateProfileBootstrap();
     return response;
   },
 
@@ -139,6 +167,7 @@ export const movieApi = {
     });
 
     bumpCollectionMutationVersion();
+    movieApi.invalidateProfileBootstrap();
     return response;
   },
 
@@ -165,10 +194,13 @@ export const movieApi = {
     // Convert frontend position (0-3) to backend position (1-4)
     const backendPosition = position + 1;
     
-    return fetchWithAuth(`${API_BASE_URL}/api/movies/showcase/${backendPosition}`, {
+    const response = await fetchWithAuth(`${API_BASE_URL}/api/movies/showcase/${backendPosition}`, {
       method: 'PUT',
       body: JSON.stringify({ movie_id: movieId }),
     });
+
+    movieApi.invalidateProfileBootstrap();
+    return response;
   },
 
   // Remove movie from showcase position
@@ -177,9 +209,68 @@ export const movieApi = {
     // Convert frontend position (0-3) to backend position (1-4)
     const backendPosition = position + 1;
     
-    return fetchWithAuth(`${API_BASE_URL}/api/movies/showcase/${backendPosition}`, {
+    const response = await fetchWithAuth(`${API_BASE_URL}/api/movies/showcase/${backendPosition}`, {
       method: 'DELETE',
     });
+
+    movieApi.invalidateProfileBootstrap();
+    return response;
+  },
+
+  getProfileBootstrap: async ({ forceRefresh = false, limit = 50, offset = 0 } = {}) => {
+    const useDefaultWindow = limit === 50 && offset === 0;
+
+    if (useDefaultWindow && !forceRefresh && isProfileBootstrapFresh()) {
+      return profileBootstrapCache.data;
+    }
+
+    if (useDefaultWindow && profileBootstrapInFlight) {
+      return profileBootstrapInFlight;
+    }
+
+    const params = new URLSearchParams({
+      limit: String(limit),
+      offset: String(offset),
+    });
+
+    const request = fetchWithAuth(`${API_BASE_URL}/api/movies/profile/bootstrap?${params.toString()}`)
+      .then((data) => {
+        if (useDefaultWindow && data?.success) {
+          setProfileBootstrapCache(data);
+        }
+
+        return data;
+      });
+
+    if (!useDefaultWindow) {
+      return request;
+    }
+
+    profileBootstrapInFlight = request.finally(() => {
+      profileBootstrapInFlight = null;
+    });
+
+    return profileBootstrapInFlight;
+  },
+
+  getCachedProfileBootstrapSnapshot: () => (
+    isProfileBootstrapFresh() ? profileBootstrapCache.data : null
+  ),
+
+  prefetchProfileBootstrap: () => {
+    if (isProfileBootstrapFresh() || profileBootstrapInFlight || !getAuthToken()) {
+      return;
+    }
+
+    movieApi.getProfileBootstrap().catch(() => {});
+  },
+
+  invalidateProfileBootstrap: () => {
+    profileBootstrapCache = {
+      data: null,
+      timestamp: 0,
+      token: null,
+    };
   },
 
   // ===== WATCHLIST ENDPOINTS =====
