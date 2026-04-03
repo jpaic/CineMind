@@ -23,6 +23,7 @@ import AccountDeletionResult from './pages/AccountDeletionResult';
 import FilmTransition from './components/FilmTransition';
 import { startDemoSession } from './api/auth';
 import { movieApi } from './api/movieApi';
+import { resetDiscoverRecommender } from './utils/discoverRecommender';
 
 function AppContent() {
   const [loggedIn, setLoggedIn] = useState(false);
@@ -93,6 +94,7 @@ function AppContent() {
   const handleLogout = () => {
     authUtils.clearAuth();
     movieApi.invalidateProfileBootstrap();
+    resetDiscoverRecommender();
     setLoggedIn(false);
   };
 
