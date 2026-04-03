@@ -241,6 +241,10 @@ export const movieApi = {
     return profileBootstrapInFlight;
   },
 
+  getProfileStats: async () => (
+    fetchWithAuth(`${API_BASE_URL}/api/movies/profile/stats`)
+  ),
+
   getCachedProfileBootstrapSnapshot: () => (
     isProfileBootstrapFresh() ? profileBootstrapCache.data : null
   ),

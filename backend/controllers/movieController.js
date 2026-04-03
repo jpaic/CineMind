@@ -24,7 +24,7 @@ function validateRating(rating) {
 
 export async function addMovie(req, res) {
   try {
-    const { movie_id, rating } = req.body;
+    const { movie_id, rating, watched_date } = req.body;
     const userId = req.user.id;
 
     if (movie_id === null || movie_id === undefined || movie_id === "") {
@@ -36,7 +36,20 @@ export async function addMovie(req, res) {
       return res.status(400).json({ error: ratingValidation.error });
     }
 
-    const movie = await movieModel.addMovieToLibrary(userId, movie_id, ratingValidation.rating);
+    let watchedDate = new Date();
+    if (watched_date !== null && watched_date !== undefined && watched_date !== "") {
+      watchedDate = new Date(watched_date);
+      if (Number.isNaN(watchedDate.getTime())) {
+        return res.status(400).json({ error: "watched_date must be a valid date" });
+      }
+    }
+
+    const movie = await movieModel.addMovieToLibrary(
+      userId,
+      movie_id,
+      ratingValidation.rating,
+      watchedDate
+    );
 
     res.status(201).json({ success: true, movie });
   } catch (err) {
@@ -118,21 +131,33 @@ export async function getShowcase(req, res) {
 export async function getProfileBootstrap(req, res) {
   try {
     const libraryResult = await db.query(
-      `SELECT
+      `WITH latest_cache AS (
+         SELECT DISTINCT ON (movie_id)
+           movie_id,
+           title,
+           year,
+           director,
+           director_id,
+           genres,
+           poster_path
+         FROM movie_cache
+         WHERE last_updated > NOW() - INTERVAL '7 days'
+         ORDER BY movie_id, last_updated DESC
+       )
+       SELECT
          um.movie_id,
          um.rating,
          um.watched_date,
          um.updated_at,
-         mc.title,
-         mc.year,
-         mc.director,
-         mc.director_id,
-         mc.genres,
-         mc.poster_path
+         lc.title,
+         lc.year,
+         lc.director,
+         lc.director_id,
+         lc.genres,
+         lc.poster_path
        FROM user_movies um
-       LEFT JOIN movie_cache mc
-         ON mc.movie_id = um.movie_id
-        AND mc.last_updated > NOW() - INTERVAL '7 days'
+       LEFT JOIN latest_cache lc
+         ON lc.movie_id = um.movie_id
        WHERE um.user_id = $1
        ORDER BY um.watched_date DESC`,
       [req.user.id]
@@ -166,6 +191,35 @@ export async function getProfileBootstrap(req, res) {
   } catch (error) {
     console.error("Get profile bootstrap error:", error);
     res.status(500).json({ success: false, error: "Failed to get profile bootstrap data" });
+  }
+}
+
+export async function getProfileStats(req, res) {
+  try {
+    const result = await db.query(
+      `SELECT
+         COUNT(DISTINCT movie_id)::int AS films_watched,
+         COUNT(DISTINCT movie_id) FILTER (
+           WHERE EXTRACT(YEAR FROM watched_date) = EXTRACT(YEAR FROM CURRENT_DATE)
+         )::int AS this_year,
+         COALESCE(ROUND(AVG(rating)::numeric, 1), 0) AS avg_rating
+       FROM user_movies
+       WHERE user_id = $1`,
+      [req.user.id]
+    );
+
+    const row = result.rows[0] || {};
+    res.json({
+      success: true,
+      stats: {
+        filmsWatched: Number(row.films_watched || 0),
+        thisYear: Number(row.this_year || 0),
+        avgRating: Number(row.avg_rating || 0),
+      },
+    });
+  } catch (error) {
+    console.error("Get profile stats error:", error);
+    res.status(500).json({ success: false, error: "Failed to get profile stats" });
   }
 }
 
