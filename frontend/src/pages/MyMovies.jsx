@@ -31,40 +31,25 @@ export default function MyMovies() {
       // Try to get cached data first (single bulk request)
       const cacheResult = await movieApi.getCachedMoviesBulk(movieIds);
       const cachedMovies = cacheResult.movies || [];
+      const cachedById = new Map(cachedMovies.map((movie) => [movie.movie_id, movie]));
 
       // For movies not in cache, fetch from TMDB
       const uncachedIds = movieIds.filter(
-        id => !cachedMovies.find(cm => cm.movie_id === id)
+        id => !cachedById.has(id)
       );
 
-      let tmdbDetails = [];
-      if (uncachedIds.length > 0) {
-        tmdbDetails = await tmdbService.getMoviesDetails(uncachedIds);
-        
-        // Batch cache all newly fetched movies (fire and forget)
-        const cachePromises = tmdbDetails.map(movie => 
-          movieApi.cacheMovie(movie).catch(err => {
-          })
-        );
-        
-        // Don't block on caching
-        Promise.all(cachePromises).catch(err => {
-        });
-      }
-
-      // Combine cached and TMDB data with user ratings
+      // Render instantly from cache, then hydrate missing metadata asynchronously.
       const enrichedMovies = libraryItems.map(item => {
-        const cached = cachedMovies.find(cm => cm.movie_id === item.movie_id);
-        const tmdb = tmdbDetails.find(m => m.id === item.movie_id);
+        const cached = cachedById.get(item.movie_id);
         
         return {
           id: item.movie_id,
-          title: cached ? cached.title : (tmdb?.title || 'Unknown'),
-          year: cached ? cached.year : tmdb?.year,
-          poster: cached ? cached.poster_path : tmdb?.poster,
-          director: cached ? cached.director : tmdb?.director,
-          directorId: cached ? cached.director_id : tmdb?.directorId,
-          genres: cached ? (typeof cached.genres === 'string' ? JSON.parse(cached.genres) : cached.genres) : (tmdb?.genres || []),
+          title: cached ? cached.title : 'Loading...',
+          year: cached ? cached.year : null,
+          poster: cached ? cached.poster_path : null,
+          director: cached ? cached.director : null,
+          directorId: cached ? cached.director_id : null,
+          genres: cached ? (typeof cached.genres === 'string' ? JSON.parse(cached.genres) : cached.genres) : [],
           rating: item.rating, // User's rating
           watchedAt: item.watched_at,
         };
@@ -72,6 +57,33 @@ export default function MyMovies() {
 
       setMovies(enrichedMovies);
       setFilteredMovies(enrichedMovies);
+
+      if (uncachedIds.length > 0) {
+        tmdbService.getMoviesDetails(uncachedIds).then((tmdbDetails) => {
+          const tmdbById = new Map(tmdbDetails.map((movie) => [movie.id, movie]));
+          const hydrateMovie = (movie) => {
+            const tmdb = tmdbById.get(movie.id);
+            if (!tmdb) return movie;
+            return {
+              ...movie,
+              title: movie.title === 'Loading...' ? (tmdb.title || movie.title) : movie.title,
+              year: movie.year || tmdb.year || null,
+              poster: movie.poster || tmdb.poster || null,
+              director: movie.director || tmdb.director || null,
+              directorId: movie.directorId || tmdb.directorId || null,
+              genres: movie.genres?.length ? movie.genres : (tmdb.genres || []),
+            };
+          };
+
+          setMovies((prev) => prev.map(hydrateMovie));
+          setFilteredMovies((prev) => prev.map(hydrateMovie));
+
+          const cachePromises = tmdbDetails.map(movie =>
+            movieApi.cacheMovie(movie).catch(() => {})
+          );
+          Promise.all(cachePromises).catch(() => {});
+        }).catch(() => {});
+      }
     } catch (err) {
       setError(err.message || 'Failed to load library');
     } finally {
