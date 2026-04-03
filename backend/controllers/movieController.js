@@ -117,13 +117,12 @@ export async function getShowcase(req, res) {
 
 export async function getProfileBootstrap(req, res) {
   try {
-    const result = await db.query(
+    const libraryResult = await db.query(
       `SELECT
          um.movie_id,
          um.rating,
          um.watched_date,
          um.updated_at,
-         ups.position AS showcase_position,
          mc.title,
          mc.year,
          mc.director,
@@ -131,9 +130,6 @@ export async function getProfileBootstrap(req, res) {
          mc.genres,
          mc.poster_path
        FROM user_movies um
-       LEFT JOIN user_profile_showcase ups
-         ON ups.user_id = um.user_id
-        AND ups.movie_id = um.id
        LEFT JOIN movie_cache mc
          ON mc.movie_id = um.movie_id
         AND mc.last_updated > NOW() - INTERVAL '7 days'
@@ -142,7 +138,16 @@ export async function getProfileBootstrap(req, res) {
       [req.user.id]
     );
 
-    const movies = result.rows.map((row) => ({
+    const showcaseResult = await db.query(
+      `SELECT ups.position, um.movie_id
+       FROM user_profile_showcase ups
+       JOIN user_movies um ON ups.movie_id = um.id
+       WHERE ups.user_id = $1
+       ORDER BY ups.position`,
+      [req.user.id]
+    );
+
+    const movies = libraryResult.rows.map((row) => ({
       movie_id: row.movie_id,
       rating: row.rating,
       watched_date: row.watched_date,
@@ -155,12 +160,7 @@ export async function getProfileBootstrap(req, res) {
       poster_path: row.poster_path,
     }));
 
-    const showcase = result.rows
-      .filter((row) => row.showcase_position !== null)
-      .map((row) => ({
-        position: row.showcase_position,
-        movie_id: row.movie_id,
-      }));
+    const showcase = showcaseResult.rows;
 
     res.json({ success: true, movies, showcase });
   } catch (error) {
