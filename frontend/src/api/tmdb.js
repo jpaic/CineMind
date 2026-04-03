@@ -454,6 +454,23 @@ export const tmdbService = {
       }
     },
 
+    getMovieBackdropOptions: async (movieId) => {
+      try {
+        const response = await fetch(
+          `${TMDB_BASE_URL}/movie/${movieId}/images?api_key=${API_KEY}`
+        );
+
+        if (!response.ok) throw new Error('Failed to fetch movie images');
+
+        const data = await response.json();
+        const uniquePaths = Array.from(new Set((data.backdrops || []).map((item) => item.file_path).filter(Boolean)));
+
+        return uniquePaths.slice(0, 12).map((path) => `${TMDB_IMAGE_BASE}/original${path}`);
+      } catch {
+        return [];
+      }
+    },
+
     findMovieByImdbId: async (imdbId) => {
       if (!imdbId) {
         return null;
