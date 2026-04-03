@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { Plus, X, Search } from "lucide-react";
+import { Plus, X, Search, Pencil } from "lucide-react";
 import { authUtils } from "../utils/authUtils";
 import { movieApi } from "../api/movieApi";
 import { tmdbService } from "../api/tmdb";
@@ -15,6 +15,10 @@ const DEFAULT_PROFILE_STATS = {
   favoriteDirectorAvgRating: 0,
 };
 
+const DEFAULT_HEADER_IMAGE = "https://image.tmdb.org/t/p/original/jOzrELAzFxtMx2I4uDGHOotdfsS.jpg";
+
+const getProfilePreferencesStorageKey = (username) => `profilePreferencesV1:${(username || "Guest").toLowerCase()}`;
+
 export default function Profile() {
   const [isPickingShowcase, setIsPickingShowcase] = useState(false);
   const [currentShowcaseIndex, setCurrentShowcaseIndex] = useState(null);
@@ -25,6 +29,17 @@ export default function Profile() {
   const [profileStats, setProfileStats] = useState(DEFAULT_PROFILE_STATS);
   const [loading, setLoading] = useState(true);
   const [username, setUsername] = useState(authUtils.getUsername() || "Guest");
+  const [bio, setBio] = useState("");
+  const [profilePicture, setProfilePicture] = useState("");
+  const [headerImage, setHeaderImage] = useState(DEFAULT_HEADER_IMAGE);
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [isPickingBannerMovie, setIsPickingBannerMovie] = useState(false);
+  const [bannerQuery, setBannerQuery] = useState("");
+  const [bannerSearchResults, setBannerSearchResults] = useState([]);
+  const [bannerSearchLoading, setBannerSearchLoading] = useState(false);
+  const [editFormBio, setEditFormBio] = useState("");
+  const [editFormProfilePicture, setEditFormProfilePicture] = useState("");
+  const [isDemoMode, setIsDemoMode] = useState(authUtils.isDemoMode());
 
   const deriveFavoriteDirectorFromMovies = useCallback((movies) => {
     const qualifiedDirectors = movies.reduce((acc, movie) => {
@@ -233,7 +248,38 @@ export default function Profile() {
   useEffect(() => {
     const storedUsername = authUtils.getUsername();
     if (storedUsername) setUsername(storedUsername);
+    setIsDemoMode(authUtils.isDemoMode());
   }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const storageKey = getProfilePreferencesStorageKey(username);
+    try {
+      const rawPreferences = localStorage.getItem(storageKey);
+      if (!rawPreferences) {
+        setBio("");
+        setProfilePicture("");
+        setHeaderImage(DEFAULT_HEADER_IMAGE);
+        return;
+      }
+
+      const parsed = JSON.parse(rawPreferences);
+      setBio(typeof parsed.bio === "string" ? parsed.bio : "");
+      setProfilePicture(typeof parsed.profilePicture === "string" ? parsed.profilePicture : "");
+      setHeaderImage(typeof parsed.headerImage === "string" && parsed.headerImage ? parsed.headerImage : DEFAULT_HEADER_IMAGE);
+    } catch {
+      setBio("");
+      setProfilePicture("");
+      setHeaderImage(DEFAULT_HEADER_IMAGE);
+    }
+  }, [username]);
+
+  const persistProfilePreferences = useCallback((nextPreferences) => {
+    if (typeof window === "undefined") return;
+    const storageKey = getProfilePreferencesStorageKey(username);
+    localStorage.setItem(storageKey, JSON.stringify(nextPreferences));
+  }, [username]);
 
   // Load showcase and library on mount
   useEffect(() => {
@@ -251,10 +297,10 @@ export default function Profile() {
 
   const user = {
     name: username,
-    bio: "Film enthusiast and Christopher Nolan superfan. Love sci-fi, thrillers, and anything that makes me think.",
+    bio,
     favoriteGenres: ["Sci-Fi", "Thriller", "Drama"],
-    profilePicture: `https://ui-avatars.com/api/?name=${encodeURIComponent(username)}&size=200&background=1f2833&color=f1e9da`,
-    headerImage: "https://image.tmdb.org/t/p/original/jOzrELAzFxtMx2I4uDGHOotdfsS.jpg",
+    profilePicture: profilePicture || `https://ui-avatars.com/api/?name=${encodeURIComponent(username)}&size=200&background=1f2833&color=f1e9da`,
+    headerImage,
   };
 
   const stats = {
@@ -319,6 +365,84 @@ export default function Profile() {
     } catch {
       alert('Failed to update showcase. Please try again.');
     }
+  };
+
+  const handleOpenProfileEditor = () => {
+    if (isDemoMode) return;
+    setEditFormBio(bio);
+    setEditFormProfilePicture(profilePicture);
+    setBannerQuery("");
+    setBannerSearchResults([]);
+    setIsPickingBannerMovie(false);
+    setIsEditingProfile(true);
+  };
+
+  const handleCloseProfileEditor = () => {
+    setIsPickingBannerMovie(false);
+    setBannerQuery("");
+    setBannerSearchResults([]);
+    setIsEditingProfile(false);
+  };
+
+  const handleProfilePictureUpload = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = typeof reader.result === "string" ? reader.result : "";
+      setEditFormProfilePicture(result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSaveProfilePreferences = () => {
+    const nextPreferences = {
+      bio: editFormBio.trim(),
+      profilePicture: editFormProfilePicture || "",
+      headerImage,
+    };
+
+    setBio(nextPreferences.bio);
+    setProfilePicture(nextPreferences.profilePicture);
+    persistProfilePreferences(nextPreferences);
+    handleCloseProfileEditor();
+  };
+
+  const handleBannerSearch = async (query) => {
+    const trimmedQuery = query.trim();
+    if (trimmedQuery.length < 2) {
+      setBannerSearchResults([]);
+      return;
+    }
+
+    setBannerSearchLoading(true);
+    const results = await tmdbService.searchMovies(trimmedQuery);
+    setBannerSearchResults(Array.isArray(results) ? results.slice(0, 20) : []);
+    setBannerSearchLoading(false);
+  };
+
+  useEffect(() => {
+    if (!isEditingProfile || !isPickingBannerMovie) return;
+
+    const timer = setTimeout(() => {
+      handleBannerSearch(bannerQuery);
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [bannerQuery, isEditingProfile, isPickingBannerMovie]);
+
+  const handleSelectBannerMovie = async (movie) => {
+    const detailedMovie = await tmdbService.getMovieDetails(movie.id);
+    const nextHeaderImage = detailedMovie?.backdrop || detailedMovie?.poster || movie.backdrop || movie.poster || DEFAULT_HEADER_IMAGE;
+    setHeaderImage(nextHeaderImage);
+    const nextPreferences = {
+      bio: editFormBio.trim(),
+      profilePicture: editFormProfilePicture || "",
+      headerImage: nextHeaderImage,
+    };
+    persistProfilePreferences(nextPreferences);
+    setIsPickingBannerMovie(false);
   };
 
   if (loading) {
@@ -393,9 +517,19 @@ export default function Profile() {
         <div className="flex-shrink-0 w-full md:w-1/3 flex flex-col gap-4">
           {/* Profile Info */}
           <div className="flex flex-col items-center md:items-start gap-2">
-            <img src={user.profilePicture} alt={user.name} className="w-24 h-24 sm:w-28 sm:h-28 rounded-lg ring-2 ring-blue-500/30" />
+            <div className="flex items-start gap-3">
+              <img src={user.profilePicture} alt={user.name} className="w-24 h-24 sm:w-28 sm:h-28 rounded-lg ring-2 ring-blue-500/30" />
+              <button
+                onClick={handleOpenProfileEditor}
+                disabled={isDemoMode}
+                title={isDemoMode ? "Disabled in demo mode" : "Edit profile"}
+                className="mt-1 p-2 rounded-md border border-slate-700 hover:border-blue-500/50 hover:bg-slate-800 transition disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <Pencil className="w-4 h-4 text-slate-300" />
+              </button>
+            </div>
             <h1 className="text-2xl sm:text-3xl font-bold text-slate-50 text-center md:text-left">{user.name}</h1>
-            <p className="text-slate-300 text-sm sm:text-base line-clamp-4 text-center md:text-left">{user.bio}</p>
+            <p className="text-slate-300 text-sm sm:text-base line-clamp-4 text-center md:text-left">{user.bio || "No description yet."}</p>
             <div className="flex flex-wrap gap-1 justify-center md:justify-start">
               {user.favoriteGenres.map((genre) => (
                 <span key={genre} className="px-2 py-0.5 text-xs sm:text-sm border border-blue-500/30 rounded text-slate-200">
@@ -451,6 +585,97 @@ export default function Profile() {
           )}
         </div>
       </div>
+
+      {isEditingProfile && (
+        <div className="fixed inset-0 flex items-start justify-center z-50 px-4 pt-16 modal-overlay modal-opening">
+          <div className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm" onClick={handleCloseProfileEditor} />
+          <div className="bg-slate-900 rounded-lg border border-slate-800 w-full max-w-2xl p-4 relative z-10 modal-content modal-content-opening">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-bold text-slate-50">Edit Profile</h3>
+              <button onClick={handleCloseProfileEditor} className="text-slate-400 hover:text-slate-200 transition">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm text-slate-300 mb-1">Description</label>
+                <textarea
+                  value={editFormBio}
+                  onChange={(event) => setEditFormBio(event.target.value)}
+                  rows={4}
+                  placeholder="Tell people about your movie taste..."
+                  className="w-full rounded bg-slate-800 text-slate-50 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 border border-slate-700 p-3"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm text-slate-300 mb-1">Profile Picture Upload</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleProfilePictureUpload}
+                  className="w-full text-sm text-slate-300 file:mr-3 file:rounded file:border-0 file:bg-blue-500/20 file:px-3 file:py-1.5 file:text-blue-300 hover:file:bg-blue-500/30"
+                />
+              </div>
+
+              <div>
+                <button
+                  onClick={() => setIsPickingBannerMovie((prev) => !prev)}
+                  className="px-3 py-2 rounded bg-slate-800 border border-slate-700 text-sm hover:border-blue-500/50"
+                >
+                  {isPickingBannerMovie ? "Hide Banner Picker" : "Choose Header Banner by Movie"}
+                </button>
+
+                {isPickingBannerMovie && (
+                  <div className="mt-3 rounded border border-slate-800 p-3 bg-slate-950/50">
+                    <div className="relative mb-3">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500 w-4 h-4" />
+                      <input
+                        type="text"
+                        value={bannerQuery}
+                        onChange={(event) => setBannerQuery(event.target.value)}
+                        placeholder="Search movie for banner..."
+                        className="w-full pl-10 pr-4 py-2.5 rounded bg-slate-800 text-slate-50 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 border border-slate-700"
+                      />
+                    </div>
+                    {bannerSearchLoading && <p className="text-sm text-slate-400">Searching...</p>}
+                    <div className="space-y-1 max-h-56 overflow-y-auto">
+                      {bannerSearchResults.map((movie) => (
+                        <button
+                          key={movie.id}
+                          type="button"
+                          onClick={() => handleSelectBannerMovie(movie)}
+                          className="w-full text-left flex items-center gap-3 p-2 rounded border border-slate-800 hover:border-blue-500/50 hover:bg-slate-800/50"
+                        >
+                          {movie.poster ? (
+                            <img src={movie.poster} alt={movie.title} className="w-10 h-14 object-cover rounded flex-shrink-0" />
+                          ) : (
+                            <div className="w-10 h-14 bg-slate-700 rounded flex-shrink-0" />
+                          )}
+                          <div className="min-w-0">
+                            <p className="text-sm text-slate-100 truncate">{movie.title}</p>
+                            <p className="text-xs text-slate-400">{movie.year || "N/A"}</p>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex justify-end gap-2">
+                <button onClick={handleCloseProfileEditor} className="px-3 py-2 rounded border border-slate-700 text-slate-300">
+                  Cancel
+                </button>
+                <button onClick={handleSaveProfilePreferences} className="px-3 py-2 rounded bg-blue-600 text-white">
+                  Save
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Showcase Picker Modal */}
       {isPickingShowcase && (

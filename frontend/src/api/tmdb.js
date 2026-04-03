@@ -407,6 +407,9 @@ export const tmdbService = {
           poster: movie.poster_path 
             ? `${TMDB_IMAGE_BASE}/w500${movie.poster_path}` 
             : null,
+          backdrop: movie.backdrop_path
+            ? `${TMDB_IMAGE_BASE}/original${movie.backdrop_path}`
+            : null,
           overview: movie.overview,
         }));
       } catch (error) {
@@ -435,6 +438,9 @@ export const tmdbService = {
           year: movie.release_date ? new Date(movie.release_date).getFullYear() : null,
           poster: movie.poster_path 
             ? `${TMDB_IMAGE_BASE}/original${movie.poster_path}` 
+            : null,
+          backdrop: movie.backdrop_path
+            ? `${TMDB_IMAGE_BASE}/original${movie.backdrop_path}`
             : null,
           director: director?.name || 'Unknown',
           directorId: director?.id || null,
