@@ -192,20 +192,33 @@ def decade_start(year: int | None) -> int | None:
     return (year // 10) * 10
 
 
-def get_candidate_year_window(rated_features: list[dict[str, Any]]) -> tuple[int, int] | None:
-    rated_decades = sorted(
-        {
-            d
-            for d in (decade_start(features.get("year")) for features in rated_features)
-            if d is not None
-        }
-    )
+MIN_DECADE_SHARE_FOR_OLDEST = float(os.getenv("MIN_DECADE_SHARE_FOR_OLDEST", "0.05"))
+
+
+def get_candidate_year_window(
+    rated_features: list[dict[str, Any]],
+    total_rated_movies: int,
+) -> tuple[int, int] | None:
+    decade_counts: dict[int, int] = defaultdict(int)
+    for features in rated_features:
+        decade = decade_start(features.get("year"))
+        if decade is not None:
+            decade_counts[decade] += 1
+
+    rated_decades = sorted(decade_counts.keys())
 
     if not rated_decades:
         return None
 
-    # Keep recommendations near the user's taste era and avoid very old decades.
+    denominator = max(1, total_rated_movies)
     min_decade = rated_decades[0]
+    for decade in rated_decades:
+        share = decade_counts[decade] / denominator
+        if share >= MIN_DECADE_SHARE_FOR_OLDEST:
+            min_decade = decade
+            break
+
+    # Keep recommendations near the user's taste era and avoid very old decades.
     max_decade = rated_decades[-1]
 
     min_year = min_decade - 20
@@ -349,7 +362,7 @@ async def score_candidates(user_id: int, limit: int) -> dict[str, Any]:
     rated_features = await asyncio.gather(
         *(get_full_movie_features(int(row["movie_id"]), feature_cache) for row in user_rows)
     )
-    candidate_year_window = get_candidate_year_window(rated_features)
+    candidate_year_window = get_candidate_year_window(rated_features, len(user_rows))
 
     for row, features in zip(user_rows, rated_features):
         rating = float(row["rating"])
