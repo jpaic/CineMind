@@ -16,6 +16,13 @@ const DEFAULT_PROFILE_STATS = {
 };
 
 const DEFAULT_HEADER_IMAGE = "https://image.tmdb.org/t/p/original/jOzrELAzFxtMx2I4uDGHOotdfsS.jpg";
+const MAX_BIO_LENGTH = 100;
+const DEFAULT_BANNER_SETTINGS = {
+  positionX: 50,
+  positionY: 50,
+  scale: 100,
+};
+const BIO_SIZING_TEXT = "W".repeat(MAX_BIO_LENGTH);
 
 const getProfilePreferencesStorageKey = (username) => `profilePreferencesV1:${(username || "Guest").toLowerCase()}`;
 
@@ -32,6 +39,7 @@ export default function Profile() {
   const [bio, setBio] = useState("");
   const [profilePicture, setProfilePicture] = useState("");
   const [headerImage, setHeaderImage] = useState(DEFAULT_HEADER_IMAGE);
+  const [bannerSettings, setBannerSettings] = useState(DEFAULT_BANNER_SETTINGS);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [isPickingBannerMovie, setIsPickingBannerMovie] = useState(false);
   const [bannerQuery, setBannerQuery] = useState("");
@@ -39,6 +47,11 @@ export default function Profile() {
   const [bannerSearchLoading, setBannerSearchLoading] = useState(false);
   const [editFormBio, setEditFormBio] = useState("");
   const [editFormProfilePicture, setEditFormProfilePicture] = useState("");
+  const [editFormHeaderImage, setEditFormHeaderImage] = useState(DEFAULT_HEADER_IMAGE);
+  const [editFormBannerSettings, setEditFormBannerSettings] = useState(DEFAULT_BANNER_SETTINGS);
+  const [bannerOptions, setBannerOptions] = useState([]);
+  const [selectedBannerMovieTitle, setSelectedBannerMovieTitle] = useState("");
+  const [bannerOptionsLoading, setBannerOptionsLoading] = useState(false);
   const [isDemoMode, setIsDemoMode] = useState(authUtils.isDemoMode());
 
   const deriveFavoriteDirectorFromMovies = useCallback((movies) => {
@@ -261,6 +274,7 @@ export default function Profile() {
         setBio("");
         setProfilePicture("");
         setHeaderImage(DEFAULT_HEADER_IMAGE);
+        setBannerSettings(DEFAULT_BANNER_SETTINGS);
         return;
       }
 
@@ -268,10 +282,16 @@ export default function Profile() {
       setBio(typeof parsed.bio === "string" ? parsed.bio : "");
       setProfilePicture(typeof parsed.profilePicture === "string" ? parsed.profilePicture : "");
       setHeaderImage(typeof parsed.headerImage === "string" && parsed.headerImage ? parsed.headerImage : DEFAULT_HEADER_IMAGE);
+      setBannerSettings({
+        positionX: Number.isFinite(parsed?.bannerSettings?.positionX) ? parsed.bannerSettings.positionX : DEFAULT_BANNER_SETTINGS.positionX,
+        positionY: Number.isFinite(parsed?.bannerSettings?.positionY) ? parsed.bannerSettings.positionY : DEFAULT_BANNER_SETTINGS.positionY,
+        scale: Number.isFinite(parsed?.bannerSettings?.scale) ? parsed.bannerSettings.scale : DEFAULT_BANNER_SETTINGS.scale,
+      });
     } catch {
       setBio("");
       setProfilePicture("");
       setHeaderImage(DEFAULT_HEADER_IMAGE);
+      setBannerSettings(DEFAULT_BANNER_SETTINGS);
     }
   }, [username]);
 
@@ -301,6 +321,7 @@ export default function Profile() {
     favoriteGenres: ["Sci-Fi", "Thriller", "Drama"],
     profilePicture: profilePicture || `https://ui-avatars.com/api/?name=${encodeURIComponent(username)}&size=200&background=1f2833&color=f1e9da`,
     headerImage,
+    bannerSettings,
   };
 
   const stats = {
@@ -371,6 +392,10 @@ export default function Profile() {
     if (isDemoMode) return;
     setEditFormBio(bio);
     setEditFormProfilePicture(profilePicture);
+    setEditFormHeaderImage(headerImage);
+    setEditFormBannerSettings(bannerSettings || DEFAULT_BANNER_SETTINGS);
+    setBannerOptions([]);
+    setSelectedBannerMovieTitle("");
     setBannerQuery("");
     setBannerSearchResults([]);
     setIsPickingBannerMovie(false);
@@ -381,6 +406,9 @@ export default function Profile() {
     setIsPickingBannerMovie(false);
     setBannerQuery("");
     setBannerSearchResults([]);
+    setBannerOptions([]);
+    setSelectedBannerMovieTitle("");
+    setBannerOptionsLoading(false);
     setIsEditingProfile(false);
   };
 
@@ -397,14 +425,24 @@ export default function Profile() {
   };
 
   const handleSaveProfilePreferences = () => {
+    const trimmedBio = editFormBio.trim().slice(0, MAX_BIO_LENGTH);
+    const clampedBannerSettings = {
+      positionX: Math.min(100, Math.max(0, editFormBannerSettings.positionX)),
+      positionY: Math.min(100, Math.max(0, editFormBannerSettings.positionY)),
+      scale: Math.min(140, Math.max(80, editFormBannerSettings.scale)),
+    };
+
     const nextPreferences = {
-      bio: editFormBio.trim(),
+      bio: trimmedBio,
       profilePicture: editFormProfilePicture || "",
-      headerImage,
+      headerImage: editFormHeaderImage || DEFAULT_HEADER_IMAGE,
+      bannerSettings: clampedBannerSettings,
     };
 
     setBio(nextPreferences.bio);
     setProfilePicture(nextPreferences.profilePicture);
+    setHeaderImage(nextPreferences.headerImage);
+    setBannerSettings(clampedBannerSettings);
     persistProfilePreferences(nextPreferences);
     handleCloseProfileEditor();
   };
@@ -433,16 +471,25 @@ export default function Profile() {
   }, [bannerQuery, isEditingProfile, isPickingBannerMovie]);
 
   const handleSelectBannerMovie = async (movie) => {
+    setBannerOptionsLoading(true);
     const detailedMovie = await tmdbService.getMovieDetails(movie.id);
-    const nextHeaderImage = detailedMovie?.backdrop || detailedMovie?.poster || movie.backdrop || movie.poster || DEFAULT_HEADER_IMAGE;
-    setHeaderImage(nextHeaderImage);
-    const nextPreferences = {
-      bio: editFormBio.trim(),
-      profilePicture: editFormProfilePicture || "",
-      headerImage: nextHeaderImage,
-    };
-    persistProfilePreferences(nextPreferences);
-    setIsPickingBannerMovie(false);
+    const backdropOptions = await tmdbService.getMovieBackdropOptions(movie.id);
+
+    const fallbackImages = [
+      ...backdropOptions,
+      detailedMovie?.backdrop,
+      detailedMovie?.poster,
+      movie.backdrop,
+      movie.poster,
+    ].filter(Boolean);
+
+    const uniqueOptions = Array.from(new Set(fallbackImages));
+    const nextOptions = uniqueOptions.length ? uniqueOptions : [DEFAULT_HEADER_IMAGE];
+
+    setBannerOptions(nextOptions);
+    setEditFormHeaderImage(nextOptions[0]);
+    setSelectedBannerMovieTitle(movie.title || "Selected movie");
+    setBannerOptionsLoading(false);
   };
 
   if (loading) {
@@ -504,15 +551,37 @@ export default function Profile() {
   }
 
   return (
-    <div className="flex flex-col w-full bg-slate-950 text-slate-50 min-h-screen">
+    <div className="relative flex flex-col w-full bg-slate-950 text-slate-50 min-h-screen overflow-hidden">
+      <div className="absolute inset-0 pointer-events-none">
+        <img
+          src={user.headerImage}
+          alt=""
+          aria-hidden="true"
+          className="w-full h-full object-cover opacity-15"
+          style={{
+            objectPosition: `${user.bannerSettings.positionX}% ${user.bannerSettings.positionY}%`,
+            transform: `scale(${user.bannerSettings.scale / 100})`,
+          }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-blue-500/25 via-slate-950/70 to-slate-950" />
+      </div>
+
       {/* Header */}
-      <div className="w-full h-32 sm:h-40 md:h-48 overflow-hidden relative">
-        <img src={user.headerImage} alt="Header" className="w-full h-full object-cover opacity-30" />
+      <div className="w-full h-32 sm:h-40 md:h-48 overflow-hidden relative z-10">
+        <img
+          src={user.headerImage}
+          alt="Header"
+          className="w-full h-full object-cover opacity-45"
+          style={{
+            objectPosition: `${user.bannerSettings.positionX}% ${user.bannerSettings.positionY}%`,
+            transform: `scale(${user.bannerSettings.scale / 100})`,
+          }}
+        />
         <div className="absolute inset-0 bg-gradient-to-b from-slate-950/20 to-slate-950"></div>
       </div>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-6 py-6 flex flex-col md:flex-row gap-6 items-start">
+      <div className="relative z-10 max-w-7xl mx-auto px-6 py-6 flex flex-col md:flex-row gap-6 items-start">
         {/* Left Column */}
         <div className="flex-shrink-0 w-full md:w-1/3 flex flex-col gap-4">
           {/* Profile Info */}
@@ -529,7 +598,12 @@ export default function Profile() {
               </button>
             </div>
             <h1 className="text-2xl sm:text-3xl font-bold text-slate-50 text-center md:text-left">{user.name}</h1>
-            <p className="text-slate-300 text-sm sm:text-base line-clamp-4 text-center md:text-left">{user.bio || "No description yet."}</p>
+            <div className="relative w-full">
+              <p className="invisible text-slate-300 text-sm sm:text-base break-words text-center md:text-left">{BIO_SIZING_TEXT}</p>
+              <p className="absolute inset-0 text-slate-300 text-sm sm:text-base break-words text-center md:text-left">
+                {(user.bio || "No description yet.").slice(0, MAX_BIO_LENGTH)}
+              </p>
+            </div>
             <div className="flex flex-wrap gap-1 justify-center md:justify-start">
               {user.favoriteGenres.map((genre) => (
                 <span key={genre} className="px-2 py-0.5 text-xs sm:text-sm border border-blue-500/30 rounded text-slate-200">
@@ -602,11 +676,13 @@ export default function Profile() {
                 <label className="block text-sm text-slate-300 mb-1">Description</label>
                 <textarea
                   value={editFormBio}
-                  onChange={(event) => setEditFormBio(event.target.value)}
+                  onChange={(event) => setEditFormBio(event.target.value.slice(0, MAX_BIO_LENGTH))}
                   rows={4}
                   placeholder="Tell people about your movie taste..."
                   className="w-full rounded bg-slate-800 text-slate-50 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 border border-slate-700 p-3"
+                  maxLength={MAX_BIO_LENGTH}
                 />
+                <p className="mt-1 text-xs text-slate-400 text-right">{editFormBio.length}/{MAX_BIO_LENGTH}</p>
               </div>
 
               <div>
@@ -624,7 +700,7 @@ export default function Profile() {
                   onClick={() => setIsPickingBannerMovie((prev) => !prev)}
                   className="px-3 py-2 rounded bg-slate-800 border border-slate-700 text-sm hover:border-blue-500/50"
                 >
-                  {isPickingBannerMovie ? "Hide Banner Picker" : "Choose Header Banner by Movie"}
+                  {isPickingBannerMovie ? "Hide Banner Picker" : "Choose Banner from Movie"}
                 </button>
 
                 {isPickingBannerMovie && (
@@ -659,6 +735,79 @@ export default function Profile() {
                           </div>
                         </button>
                       ))}
+                    </div>
+
+                    {bannerOptionsLoading && <p className="text-sm text-slate-400 mt-3">Loading banner options...</p>}
+                    {bannerOptions.length > 0 && (
+                      <div className="mt-4 space-y-3">
+                        <p className="text-xs text-slate-400">
+                          Example banners from <span className="text-slate-200">{selectedBannerMovieTitle}</span> (applies when you press Save):
+                        </p>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                          {bannerOptions.map((option) => (
+                            <button
+                              key={option}
+                              type="button"
+                              onClick={() => setEditFormHeaderImage(option)}
+                              className={`rounded overflow-hidden border transition ${
+                                editFormHeaderImage === option
+                                  ? "border-blue-500 ring-2 ring-blue-500/40"
+                                  : "border-slate-700 hover:border-blue-500/50"
+                              }`}
+                            >
+                              <img src={option} alt="Banner option" className="w-full h-20 object-cover" />
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="mt-4 rounded border border-slate-800 p-3 space-y-3">
+                      <p className="text-sm text-slate-200">Banner position and framing</p>
+                      <label className="block text-xs text-slate-400">
+                        Horizontal ({Math.round(editFormBannerSettings.positionX)}%)
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          value={editFormBannerSettings.positionX}
+                          onChange={(event) => setEditFormBannerSettings((prev) => ({ ...prev, positionX: Number(event.target.value) }))}
+                          className="w-full"
+                        />
+                      </label>
+                      <label className="block text-xs text-slate-400">
+                        Vertical ({Math.round(editFormBannerSettings.positionY)}%)
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          value={editFormBannerSettings.positionY}
+                          onChange={(event) => setEditFormBannerSettings((prev) => ({ ...prev, positionY: Number(event.target.value) }))}
+                          className="w-full"
+                        />
+                      </label>
+                      <label className="block text-xs text-slate-400">
+                        Zoom ({Math.round(editFormBannerSettings.scale)}%)
+                        <input
+                          type="range"
+                          min="80"
+                          max="140"
+                          value={editFormBannerSettings.scale}
+                          onChange={(event) => setEditFormBannerSettings((prev) => ({ ...prev, scale: Number(event.target.value) }))}
+                          className="w-full"
+                        />
+                      </label>
+                      <div className="rounded overflow-hidden border border-slate-700">
+                        <img
+                          src={editFormHeaderImage || DEFAULT_HEADER_IMAGE}
+                          alt="Banner preview"
+                          className="w-full h-20 object-cover"
+                          style={{
+                            objectPosition: `${editFormBannerSettings.positionX}% ${editFormBannerSettings.positionY}%`,
+                            transform: `scale(${editFormBannerSettings.scale / 100})`,
+                          }}
+                        />
+                      </div>
                     </div>
                   </div>
                 )}
