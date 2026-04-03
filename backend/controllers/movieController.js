@@ -197,14 +197,48 @@ export async function getProfileBootstrap(req, res) {
 export async function getProfileStats(req, res) {
   try {
     const result = await db.query(
-      `SELECT
-         COUNT(DISTINCT movie_id)::int AS films_watched,
-         COUNT(DISTINCT movie_id) FILTER (
-           WHERE EXTRACT(YEAR FROM watched_date) = EXTRACT(YEAR FROM CURRENT_DATE)
-         )::int AS this_year,
-         COALESCE(ROUND(AVG(rating)::numeric, 1), 0) AS avg_rating
-       FROM user_movies
-       WHERE user_id = $1`,
+      `WITH overall_stats AS (
+         SELECT
+           COUNT(DISTINCT um.movie_id)::int AS films_watched,
+           COUNT(DISTINCT um.movie_id) FILTER (
+             WHERE EXTRACT(YEAR FROM um.watched_date) = EXTRACT(YEAR FROM CURRENT_DATE)
+           )::int AS this_year,
+           COALESCE(ROUND(AVG(um.rating)::numeric, 1), 0) AS avg_rating
+         FROM user_movies um
+         WHERE um.user_id = $1
+       ),
+       director_stats AS (
+         SELECT
+           mc.director,
+           COUNT(*)::int AS movies_watched,
+           ROUND(AVG(um.rating)::numeric, 2) AS avg_director_rating,
+           (ROUND(AVG(um.rating)::numeric, 2) * 100 + COUNT(*))::numeric AS weighted_score
+         FROM user_movies um
+         JOIN movie_cache mc ON mc.movie_id = um.movie_id
+         WHERE um.user_id = $1
+           AND mc.director IS NOT NULL
+           AND TRIM(mc.director) <> ''
+         GROUP BY mc.director
+         HAVING COUNT(*) >= 2
+       ),
+       favorite_director AS (
+         SELECT
+           director,
+           movies_watched,
+           avg_director_rating
+         FROM director_stats
+         ORDER BY weighted_score DESC, avg_director_rating DESC, movies_watched DESC, director ASC
+         LIMIT 1
+       )
+       SELECT
+         os.films_watched,
+         os.this_year,
+         os.avg_rating,
+         fd.director AS favorite_director,
+         fd.movies_watched AS favorite_director_movies_watched,
+         fd.avg_director_rating AS favorite_director_avg_rating
+       FROM overall_stats os
+       LEFT JOIN favorite_director fd ON true`,
       [req.user.id]
     );
 
@@ -215,6 +249,9 @@ export async function getProfileStats(req, res) {
         filmsWatched: Number(row.films_watched || 0),
         thisYear: Number(row.this_year || 0),
         avgRating: Number(row.avg_rating || 0),
+        favoriteDirector: row.favorite_director || null,
+        favoriteDirectorMoviesWatched: Number(row.favorite_director_movies_watched || 0),
+        favoriteDirectorAvgRating: Number(row.favorite_director_avg_rating || 0),
       },
     });
   } catch (error) {

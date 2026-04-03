@@ -10,6 +10,9 @@ const DEFAULT_PROFILE_STATS = {
   filmsWatched: 0,
   thisYear: 0,
   avgRating: 0,
+  favoriteDirector: null,
+  favoriteDirectorMoviesWatched: 0,
+  favoriteDirectorAvgRating: 0,
 };
 
 export default function Profile() {
@@ -23,16 +26,81 @@ export default function Profile() {
   const [loading, setLoading] = useState(true);
   const [username, setUsername] = useState(authUtils.getUsername() || "Guest");
 
-  const deriveStatsFromMovies = useCallback((movies) => ({
-    filmsWatched: movies.length,
-    thisYear: movies.filter((movie) => {
-      const watchedYear = movie.watchedDate ? new Date(movie.watchedDate).getFullYear() : null;
-      return watchedYear === new Date().getFullYear();
-    }).length,
-    avgRating: movies.length > 0
-      ? Number((movies.reduce((sum, movie) => sum + movie.rating, 0) / movies.length).toFixed(1))
-      : 0,
-  }), []);
+  const deriveFavoriteDirectorFromMovies = useCallback((movies) => {
+    const qualifiedDirectors = movies.reduce((acc, movie) => {
+      const directorName = (movie.director || "").trim();
+      const rating = Number(movie.rating);
+
+      if (!directorName || !Number.isFinite(rating)) {
+        return acc;
+      }
+
+      if (!acc.has(directorName)) {
+        acc.set(directorName, {
+          director: directorName,
+          moviesWatched: 0,
+          totalRating: 0,
+        });
+      }
+
+      const current = acc.get(directorName);
+      current.moviesWatched += 1;
+      current.totalRating += rating;
+
+      return acc;
+    }, new Map());
+
+    const ranked = Array.from(qualifiedDirectors.values())
+      .map((item) => {
+        const avgDirectorRating = Number((item.totalRating / item.moviesWatched).toFixed(2));
+        const weightedScore = avgDirectorRating * 100 + item.moviesWatched;
+
+        return {
+          director: item.director,
+          moviesWatched: item.moviesWatched,
+          avgDirectorRating,
+          weightedScore,
+        };
+      })
+      .filter((item) => item.moviesWatched >= 2)
+      .sort((a, b) => (
+        b.weightedScore - a.weightedScore
+        || b.avgDirectorRating - a.avgDirectorRating
+        || b.moviesWatched - a.moviesWatched
+        || a.director.localeCompare(b.director)
+      ));
+
+    const topDirector = ranked[0];
+    if (!topDirector) {
+      return {
+        favoriteDirector: null,
+        favoriteDirectorMoviesWatched: 0,
+        favoriteDirectorAvgRating: 0,
+      };
+    }
+
+    return {
+      favoriteDirector: topDirector.director,
+      favoriteDirectorMoviesWatched: topDirector.moviesWatched,
+      favoriteDirectorAvgRating: topDirector.avgDirectorRating,
+    };
+  }, []);
+
+  const deriveStatsFromMovies = useCallback((movies) => {
+    const derivedFavoriteDirector = deriveFavoriteDirectorFromMovies(movies);
+
+    return {
+      filmsWatched: movies.length,
+      thisYear: movies.filter((movie) => {
+        const watchedYear = movie.watchedDate ? new Date(movie.watchedDate).getFullYear() : null;
+        return watchedYear === new Date().getFullYear();
+      }).length,
+      avgRating: movies.length > 0
+        ? Number((movies.reduce((sum, movie) => sum + movie.rating, 0) / movies.length).toFixed(1))
+        : 0,
+      ...derivedFavoriteDirector,
+    };
+  }, [deriveFavoriteDirectorFromMovies]);
 
   const applyBootstrapData = useCallback((bootstrapData) => {
     const userMovies = bootstrapData.movies || [];
@@ -193,7 +261,7 @@ export default function Profile() {
     filmsWatched: profileStats.filmsWatched,
     thisYear: profileStats.thisYear,
     avgRating: profileStats.avgRating,
-    favoriteDirector: "Christopher Nolan",
+    favoriteDirector: profileStats.favoriteDirector || "N/A",
   };
 
   const showcaseMovieIds = showcase.filter(m => m !== null).map(m => m.id);
