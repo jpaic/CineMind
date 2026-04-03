@@ -1,10 +1,16 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Plus, X, Search } from "lucide-react";
 import { authUtils } from "../utils/authUtils";
 import { movieApi } from "../api/movieApi";
 import { tmdbService } from "../api/tmdb";
 import Card from "../components/Card";
 import FilmReelLoading from "../components/FilmReelLoading";
+
+const DEFAULT_PROFILE_STATS = {
+  filmsWatched: 0,
+  thisYear: 0,
+  avgRating: 0,
+};
 
 export default function Profile() {
   const [isPickingShowcase, setIsPickingShowcase] = useState(false);
@@ -13,29 +19,22 @@ export default function Profile() {
   const [searchQuery, setSearchQuery] = useState("");
   const [showcase, setShowcase] = useState([null, null, null, null]);
   const [userLibrary, setUserLibrary] = useState([]);
+  const [profileStats, setProfileStats] = useState(DEFAULT_PROFILE_STATS);
   const [loading, setLoading] = useState(true);
   const [username, setUsername] = useState(authUtils.getUsername() || "Guest");
 
-  // Load username on mount
-  useEffect(() => {
-    const storedUsername = authUtils.getUsername();
-    if (storedUsername) setUsername(storedUsername);
-  }, []);
+  const deriveStatsFromMovies = useCallback((movies) => ({
+    filmsWatched: movies.length,
+    thisYear: movies.filter((movie) => {
+      const watchedYear = movie.watchedDate ? new Date(movie.watchedDate).getFullYear() : null;
+      return watchedYear === new Date().getFullYear();
+    }).length,
+    avgRating: movies.length > 0
+      ? Number((movies.reduce((sum, movie) => sum + movie.rating, 0) / movies.length).toFixed(1))
+      : 0,
+  }), []);
 
-  // Load showcase and library on mount
-  useEffect(() => {
-    const cachedBootstrap = movieApi.getCachedProfileBootstrapSnapshot();
-    if (cachedBootstrap?.success) {
-      applyBootstrapData(cachedBootstrap);
-      setLoading(false);
-      loadShowcaseAndLibrary({ forceRefresh: true, showLoading: false });
-      return;
-    }
-
-    loadShowcaseAndLibrary();
-  }, []);
-
-  const applyBootstrapData = (bootstrapData) => {
+  const applyBootstrapData = useCallback((bootstrapData) => {
     const userMovies = bootstrapData.movies || [];
     const showcaseItems = (bootstrapData.showcase || []).map((item) => ({
       ...item,
@@ -48,20 +47,41 @@ export default function Profile() {
       return [];
     }
 
-    const enrichedMovies = userMovies.map((movie) => ({
-      id: movie.movie_id,
-      title: movie.title || 'Loading...',
-      rating: movie.rating,
-      year: movie.year || null,
-      poster: movie.poster_path || null,
-      director: movie.director || null,
-      directorId: movie.director_id || null,
-      genres: movie.genres
-        ? (typeof movie.genres === 'string' ? JSON.parse(movie.genres) : movie.genres)
-        : [],
-      watchedDate: movie.watched_date,
-      updatedAt: movie.updated_at,
-    }));
+    const seenMovieIds = new Set();
+    const enrichedMovies = userMovies.reduce((movies, movie) => {
+      if (seenMovieIds.has(movie.movie_id)) {
+        return movies;
+      }
+      seenMovieIds.add(movie.movie_id);
+
+      let parsedGenres = [];
+      if (movie.genres) {
+        if (typeof movie.genres === "string") {
+          try {
+            parsedGenres = JSON.parse(movie.genres);
+          } catch {
+            parsedGenres = [];
+          }
+        } else {
+          parsedGenres = movie.genres;
+        }
+      }
+
+      movies.push({
+        id: movie.movie_id,
+        title: movie.title || "Loading...",
+        rating: movie.rating,
+        year: movie.year || null,
+        poster: movie.poster_path || null,
+        director: movie.director || null,
+        directorId: movie.director_id || null,
+        genres: parsedGenres,
+        watchedDate: movie.watched_date,
+        updatedAt: movie.updated_at,
+      });
+
+      return movies;
+    }, []);
 
     setUserLibrary(enrichedMovies);
 
@@ -78,11 +98,11 @@ export default function Profile() {
     setShowcase(newShowcase);
 
     return enrichedMovies;
-  };
+  }, []);
 
-  const hydrateMissingMovieDetails = (movies) => {
+  const hydrateMissingMovieDetails = useCallback((movies) => {
     const uncachedIds = movies
-      .filter((movie) => movie.title === 'Loading...')
+      .filter((movie) => movie.title === "Loading...")
       .map((movie) => movie.id);
 
     if (uncachedIds.length === 0) {
@@ -98,7 +118,7 @@ export default function Profile() {
 
         return {
           ...movie,
-          title: movie.title === 'Loading...' ? (tmdb.title || movie.title) : movie.title,
+          title: movie.title === "Loading..." ? (tmdb.title || movie.title) : movie.title,
           year: movie.year || tmdb.year || null,
           poster: movie.poster || tmdb.poster || null,
           director: movie.director || tmdb.director || null,
@@ -107,14 +127,14 @@ export default function Profile() {
         };
       }));
 
-      const cachePromises = tmdbDetails.map(movie =>
+      const cachePromises = tmdbDetails.map((movie) =>
         movieApi.cacheMovie(movie).catch(() => {})
       );
       Promise.all(cachePromises).catch(() => {});
     }).catch(() => {});
-  };
+  }, []);
 
-  const loadShowcaseAndLibrary = async ({ forceRefresh = false, showLoading = true } = {}) => {
+  const loadShowcaseAndLibrary = useCallback(async ({ forceRefresh = false, showLoading = true } = {}) => {
     try {
       if (showLoading) {
         setLoading(true);
@@ -123,15 +143,43 @@ export default function Profile() {
       const bootstrapData = await movieApi.getProfileBootstrap({ forceRefresh });
       const enrichedMovies = applyBootstrapData(bootstrapData);
       hydrateMissingMovieDetails(enrichedMovies);
+
+      const statsData = await movieApi.getProfileStats().catch(() => null);
+      if (statsData?.success && statsData?.stats) {
+        setProfileStats(statsData.stats);
+      } else {
+        setProfileStats(deriveStatsFromMovies(enrichedMovies));
+      }
     } catch {
       setUserLibrary([]);
       setShowcase([null, null, null, null]);
+      setProfileStats(DEFAULT_PROFILE_STATS);
     } finally {
       if (showLoading) {
         setLoading(false);
       }
     }
-  };
+  }, [applyBootstrapData, deriveStatsFromMovies, hydrateMissingMovieDetails]);
+
+  // Load username on mount
+  useEffect(() => {
+    const storedUsername = authUtils.getUsername();
+    if (storedUsername) setUsername(storedUsername);
+  }, []);
+
+  // Load showcase and library on mount
+  useEffect(() => {
+    const cachedBootstrap = movieApi.getCachedProfileBootstrapSnapshot();
+    if (cachedBootstrap?.success) {
+      const cachedMovies = applyBootstrapData(cachedBootstrap);
+      setProfileStats(deriveStatsFromMovies(cachedMovies));
+      setLoading(false);
+      loadShowcaseAndLibrary({ forceRefresh: true, showLoading: false });
+      return;
+    }
+
+    loadShowcaseAndLibrary();
+  }, [applyBootstrapData, deriveStatsFromMovies, loadShowcaseAndLibrary]);
 
   const user = {
     name: username,
@@ -142,14 +190,9 @@ export default function Profile() {
   };
 
   const stats = {
-    filmsWatched: userLibrary.length,
-    thisYear: userLibrary.filter(m => {
-      const watchedYear = m.watchedDate ? new Date(m.watchedDate).getFullYear() : null;
-      return watchedYear === new Date().getFullYear();
-    }).length,
-    avgRating: userLibrary.length > 0 
-      ? (userLibrary.reduce((sum, m) => sum + m.rating, 0) / userLibrary.length).toFixed(1)
-      : 0,
+    filmsWatched: profileStats.filmsWatched,
+    thisYear: profileStats.thisYear,
+    avgRating: profileStats.avgRating,
     favoriteDirector: "Christopher Nolan",
   };
 
