@@ -5,6 +5,7 @@ import FilterBar from '../components/FilterBar';
 import { movieApi } from '../api/movieApi';
 import { tmdbService } from '../api/tmdb';
 import FilmReelLoading from '../components/FilmReelLoading';
+import { readPageCache, writePageCache } from '../utils/pageCache';
 
 export default function Watchlist() {
   const [movies, setMovies] = useState([]);
@@ -13,9 +14,19 @@ export default function Watchlist() {
   const [error, setError] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
 
-  const fetchWatchlist = async () => {
+  const fetchWatchlist = async ({ forceRefresh = false } = {}) => {
     try {
       setError(null);
+
+      if (!forceRefresh) {
+        const cached = readPageCache({ key: 'watchlist', mutationAware: true });
+        if (cached) {
+          setMovies(cached);
+          setFilteredMovies(cached);
+          setLoading(false);
+          return;
+        }
+      }
       
       const watchlistData = await movieApi.getWatchlist();
       const watchlistItems = watchlistData.watchlist || [];
@@ -23,6 +34,7 @@ export default function Watchlist() {
       if (watchlistItems.length === 0) {
         setMovies([]);
         setFilteredMovies([]);
+        writePageCache({ key: 'watchlist', items: [], mutationAware: true });
         return;
       }
 
@@ -57,6 +69,7 @@ export default function Watchlist() {
 
       setMovies(enrichedMovies);
       setFilteredMovies(enrichedMovies);
+      writePageCache({ key: 'watchlist', items: enrichedMovies, mutationAware: true });
 
       if (uncachedIds.length > 0) {
         tmdbService.getMoviesDetails(uncachedIds).then((tmdbDetails) => {
@@ -75,7 +88,11 @@ export default function Watchlist() {
             };
           };
 
-          setMovies((prev) => prev.map(hydrateMovie));
+          setMovies((prev) => {
+            const next = prev.map(hydrateMovie);
+            writePageCache({ key: 'watchlist', items: next, mutationAware: true });
+            return next;
+          });
           setFilteredMovies((prev) => prev.map(hydrateMovie));
 
           const cachePromises = tmdbDetails.map(movie =>
@@ -98,7 +115,7 @@ export default function Watchlist() {
 
   const handleRefresh = () => {
     setRefreshing(true);
-    fetchWatchlist();
+    fetchWatchlist({ forceRefresh: true });
   };
 
   const handleFilterChange = (filters) => {

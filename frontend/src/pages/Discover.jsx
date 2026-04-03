@@ -4,8 +4,8 @@ import Card from '../components/Card';
 import FilterBar from '../components/FilterBar';
 import { movieApi } from '../api/movieApi';
 import FilmReelLoading from '../components/FilmReelLoading';
+import { clearPageCache, readPageCache, writePageCache } from '../utils/pageCache';
 
-const DISCOVER_CACHE_KEY = 'discoverRecommendationsV1';
 const DISCOVER_CACHE_TTL_MS = 5 * 60 * 1000;
 
 const normalizeRecommendations = (items) => {
@@ -29,39 +29,6 @@ const normalizeRecommendations = (items) => {
     });
 };
 
-const readDiscoverCache = () => {
-  try {
-    const raw = sessionStorage.getItem(DISCOVER_CACHE_KEY);
-    if (!raw) return null;
-
-    const parsed = JSON.parse(raw);
-    if (!parsed?.savedAt || !Array.isArray(parsed?.items)) return null;
-
-    if ((Date.now() - Number(parsed.savedAt)) > DISCOVER_CACHE_TTL_MS) {
-      sessionStorage.removeItem(DISCOVER_CACHE_KEY);
-      return null;
-    }
-
-    return normalizeRecommendations(parsed.items);
-  } catch {
-    return null;
-  }
-};
-
-const writeDiscoverCache = (items) => {
-  try {
-    sessionStorage.setItem(
-      DISCOVER_CACHE_KEY,
-      JSON.stringify({
-        savedAt: Date.now(),
-        items,
-      })
-    );
-  } catch {
-    // no-op
-  }
-};
-
 export default function Discover() {
   const [movies, setMovies] = useState([]);
   const [filteredMovies, setFilteredMovies] = useState([]);
@@ -81,7 +48,7 @@ export default function Discover() {
       setError(null);
 
       if (!forceRefresh) {
-        const cached = readDiscoverCache();
+        const cached = readPageCache({ key: 'discover', ttlMs: DISCOVER_CACHE_TTL_MS });
         if (cached) {
           applyMovies(cached);
           setLoading(false);
@@ -91,7 +58,7 @@ export default function Discover() {
 
       const response = await movieApi.getRecommendations(30, forceRefresh);
       const items = applyMovies(response?.recommendations || []);
-      writeDiscoverCache(items);
+      writePageCache({ key: 'discover', items });
     } catch (err) {
       setError(err.message || 'Failed to load recommendations');
     } finally {
@@ -105,6 +72,7 @@ export default function Discover() {
   }, []);
 
   const handleRefresh = () => {
+    clearPageCache('discover');
     setRefreshing(true);
     fetchRecommendations({ forceRefresh: true });
   };

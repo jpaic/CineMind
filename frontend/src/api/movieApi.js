@@ -1,4 +1,5 @@
 import { authUtils } from '../utils/authUtils.js';
+import { bumpCollectionMutationVersion } from '../utils/pageCache';
 
 // frontend/src/api/movieApi.js
 const API_BASE_URL = import.meta.env.VITE_API_URL;
@@ -95,7 +96,7 @@ export const movieApi = {
       await movieApi.cacheMovie(movieDetails);
     }
     
-    return fetchWithAuth(`${API_BASE_URL}/api/movies/add`, {
+    const response = await fetchWithAuth(`${API_BASE_URL}/api/movies/add`, {
       method: 'POST',
       body: JSON.stringify({
         movie_id: movieId,
@@ -103,6 +104,9 @@ export const movieApi = {
         watched_date: watchedDate
       }),
     });
+
+    bumpCollectionMutationVersion();
+    return response;
   },
 
   // Get user's movie library
@@ -118,18 +122,24 @@ export const movieApi = {
   // Update movie rating
   updateRating: async (movieId, rating) => {
     ensureWritable();
-    return fetchWithAuth(`${API_BASE_URL}/api/movies/${movieId}/rating`, {
+    const response = await fetchWithAuth(`${API_BASE_URL}/api/movies/${movieId}/rating`, {
       method: 'PUT',
       body: JSON.stringify({ rating }),
     });
+
+    bumpCollectionMutationVersion();
+    return response;
   },
 
   // Delete movie from library
   deleteMovie: async (movieId) => {
     ensureWritable();
-    return fetchWithAuth(`${API_BASE_URL}/api/movies/${movieId}`, {
+    const response = await fetchWithAuth(`${API_BASE_URL}/api/movies/${movieId}`, {
       method: 'DELETE',
     });
+
+    bumpCollectionMutationVersion();
+    return response;
   },
 
   // ===== SHOWCASE ENDPOINTS =====
@@ -187,18 +197,24 @@ export const movieApi = {
       await movieApi.cacheMovie(movieDetails);
     }
     
-    return fetchWithAuth(`${API_BASE_URL}/api/movies/watchlist/add`, {
+    const response = await fetchWithAuth(`${API_BASE_URL}/api/movies/watchlist/add`, {
       method: 'POST',
       body: JSON.stringify({ movie_id: movieId }),
     });
+
+    bumpCollectionMutationVersion();
+    return response;
   },
 
   // Remove movie from watchlist
   removeFromWatchlist: async (movieId) => {
     ensureWritable();
-    return fetchWithAuth(`${API_BASE_URL}/api/movies/watchlist/${movieId}`, {
+    const response = await fetchWithAuth(`${API_BASE_URL}/api/movies/watchlist/${movieId}`, {
       method: 'DELETE',
     });
+
+    bumpCollectionMutationVersion();
+    return response;
   },
 
   // Check if movie is in watchlist
