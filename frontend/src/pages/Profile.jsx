@@ -50,6 +50,7 @@ export default function Profile() {
   const [editFormHeaderImage, setEditFormHeaderImage] = useState(DEFAULT_HEADER_IMAGE);
   const [editFormBannerSettings, setEditFormBannerSettings] = useState(DEFAULT_BANNER_SETTINGS);
   const [bannerOptions, setBannerOptions] = useState([]);
+  const [isPickingBannerOptions, setIsPickingBannerOptions] = useState(false);
   const [selectedBannerMovieTitle, setSelectedBannerMovieTitle] = useState("");
   const [bannerOptionsLoading, setBannerOptionsLoading] = useState(false);
   const [isDemoMode, setIsDemoMode] = useState(authUtils.isDemoMode());
@@ -283,9 +284,9 @@ export default function Profile() {
       setProfilePicture(typeof parsed.profilePicture === "string" ? parsed.profilePicture : "");
       setHeaderImage(typeof parsed.headerImage === "string" && parsed.headerImage ? parsed.headerImage : DEFAULT_HEADER_IMAGE);
       setBannerSettings({
-        positionX: Number.isFinite(parsed?.bannerSettings?.positionX) ? parsed.bannerSettings.positionX : DEFAULT_BANNER_SETTINGS.positionX,
+        positionX: DEFAULT_BANNER_SETTINGS.positionX,
         positionY: Number.isFinite(parsed?.bannerSettings?.positionY) ? parsed.bannerSettings.positionY : DEFAULT_BANNER_SETTINGS.positionY,
-        scale: Number.isFinite(parsed?.bannerSettings?.scale) ? parsed.bannerSettings.scale : DEFAULT_BANNER_SETTINGS.scale,
+        scale: DEFAULT_BANNER_SETTINGS.scale,
       });
     } catch {
       setBio("");
@@ -399,6 +400,7 @@ export default function Profile() {
     setBannerQuery("");
     setBannerSearchResults([]);
     setIsPickingBannerMovie(false);
+    setIsPickingBannerOptions(false);
     setIsEditingProfile(true);
   };
 
@@ -409,6 +411,7 @@ export default function Profile() {
     setBannerOptions([]);
     setSelectedBannerMovieTitle("");
     setBannerOptionsLoading(false);
+    setIsPickingBannerOptions(false);
     setIsEditingProfile(false);
   };
 
@@ -427,9 +430,9 @@ export default function Profile() {
   const handleSaveProfilePreferences = () => {
     const trimmedBio = editFormBio.trim().slice(0, MAX_BIO_LENGTH);
     const clampedBannerSettings = {
-      positionX: Math.min(100, Math.max(0, editFormBannerSettings.positionX)),
+      positionX: DEFAULT_BANNER_SETTINGS.positionX,
       positionY: Math.min(100, Math.max(0, editFormBannerSettings.positionY)),
-      scale: Math.min(140, Math.max(80, editFormBannerSettings.scale)),
+      scale: DEFAULT_BANNER_SETTINGS.scale,
     };
 
     const nextPreferences = {
@@ -471,25 +474,30 @@ export default function Profile() {
   }, [bannerQuery, isEditingProfile, isPickingBannerMovie]);
 
   const handleSelectBannerMovie = async (movie) => {
-    setBannerOptionsLoading(true);
-    const detailedMovie = await tmdbService.getMovieDetails(movie.id);
-    const backdropOptions = await tmdbService.getMovieBackdropOptions(movie.id);
-
-    const fallbackImages = [
-      ...backdropOptions,
-      detailedMovie?.backdrop,
-      detailedMovie?.poster,
-      movie.backdrop,
-      movie.poster,
-    ].filter(Boolean);
-
-    const uniqueOptions = Array.from(new Set(fallbackImages));
-    const nextOptions = uniqueOptions.length ? uniqueOptions : [DEFAULT_HEADER_IMAGE];
-
-    setBannerOptions(nextOptions);
-    setEditFormHeaderImage(nextOptions[0]);
     setSelectedBannerMovieTitle(movie.title || "Selected movie");
-    setBannerOptionsLoading(false);
+    setIsPickingBannerOptions(true);
+    setBannerOptionsLoading(true);
+
+    try {
+      const detailedMovie = await tmdbService.getMovieDetails(movie.id);
+      const backdropOptions = await tmdbService.getMovieBackdropOptions(movie.id);
+
+      const fallbackImages = [
+        ...backdropOptions,
+        detailedMovie?.backdrop,
+        detailedMovie?.poster,
+        movie.backdrop,
+        movie.poster,
+      ].filter(Boolean);
+
+      const uniqueOptions = Array.from(new Set(fallbackImages));
+      const nextOptions = uniqueOptions.length ? uniqueOptions : [DEFAULT_HEADER_IMAGE];
+
+      setBannerOptions(nextOptions);
+      setEditFormHeaderImage(nextOptions[0]);
+    } finally {
+      setBannerOptionsLoading(false);
+    }
   };
 
   if (loading) {
@@ -552,20 +560,6 @@ export default function Profile() {
 
   return (
     <div className="relative flex flex-col w-full bg-slate-950 text-slate-50 min-h-screen overflow-hidden">
-      <div className="absolute inset-0 pointer-events-none">
-        <img
-          src={user.headerImage}
-          alt=""
-          aria-hidden="true"
-          className="w-full h-full object-cover opacity-15"
-          style={{
-            objectPosition: `${user.bannerSettings.positionX}% ${user.bannerSettings.positionY}%`,
-            transform: `scale(${user.bannerSettings.scale / 100})`,
-          }}
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-blue-500/25 via-slate-950/70 to-slate-950" />
-      </div>
-
       {/* Header */}
       <div className="w-full h-32 sm:h-40 md:h-48 overflow-hidden relative z-10">
         <img
@@ -574,7 +568,6 @@ export default function Profile() {
           className="w-full h-full object-cover opacity-45"
           style={{
             objectPosition: `${user.bannerSettings.positionX}% ${user.bannerSettings.positionY}%`,
-            transform: `scale(${user.bannerSettings.scale / 100})`,
           }}
         />
         <div className="absolute inset-0 bg-gradient-to-b from-slate-950/20 to-slate-950"></div>
@@ -737,44 +730,8 @@ export default function Profile() {
                       ))}
                     </div>
 
-                    {bannerOptionsLoading && <p className="text-sm text-slate-400 mt-3">Loading banner options...</p>}
-                    {bannerOptions.length > 0 && (
-                      <div className="mt-4 space-y-3">
-                        <p className="text-xs text-slate-400">
-                          Example banners from <span className="text-slate-200">{selectedBannerMovieTitle}</span> (applies when you press Save):
-                        </p>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                          {bannerOptions.map((option) => (
-                            <button
-                              key={option}
-                              type="button"
-                              onClick={() => setEditFormHeaderImage(option)}
-                              className={`rounded overflow-hidden border transition ${
-                                editFormHeaderImage === option
-                                  ? "border-blue-500 ring-2 ring-blue-500/40"
-                                  : "border-slate-700 hover:border-blue-500/50"
-                              }`}
-                            >
-                              <img src={option} alt="Banner option" className="w-full h-20 object-cover" />
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
                     <div className="mt-4 rounded border border-slate-800 p-3 space-y-3">
                       <p className="text-sm text-slate-200">Banner position and framing</p>
-                      <label className="block text-xs text-slate-400">
-                        Horizontal ({Math.round(editFormBannerSettings.positionX)}%)
-                        <input
-                          type="range"
-                          min="0"
-                          max="100"
-                          value={editFormBannerSettings.positionX}
-                          onChange={(event) => setEditFormBannerSettings((prev) => ({ ...prev, positionX: Number(event.target.value) }))}
-                          className="w-full"
-                        />
-                      </label>
                       <label className="block text-xs text-slate-400">
                         Vertical ({Math.round(editFormBannerSettings.positionY)}%)
                         <input
@@ -786,17 +743,6 @@ export default function Profile() {
                           className="w-full"
                         />
                       </label>
-                      <label className="block text-xs text-slate-400">
-                        Zoom ({Math.round(editFormBannerSettings.scale)}%)
-                        <input
-                          type="range"
-                          min="80"
-                          max="140"
-                          value={editFormBannerSettings.scale}
-                          onChange={(event) => setEditFormBannerSettings((prev) => ({ ...prev, scale: Number(event.target.value) }))}
-                          className="w-full"
-                        />
-                      </label>
                       <div className="rounded overflow-hidden border border-slate-700">
                         <img
                           src={editFormHeaderImage || DEFAULT_HEADER_IMAGE}
@@ -804,7 +750,6 @@ export default function Profile() {
                           className="w-full h-20 object-cover"
                           style={{
                             objectPosition: `${editFormBannerSettings.positionX}% ${editFormBannerSettings.positionY}%`,
-                            transform: `scale(${editFormBannerSettings.scale / 100})`,
                           }}
                         />
                       </div>
@@ -822,6 +767,54 @@ export default function Profile() {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {isEditingProfile && isPickingBannerOptions && (
+        <div className="fixed inset-0 flex items-center justify-center z-[60] px-4 py-8 modal-overlay modal-opening">
+          <div
+            className="absolute inset-0 bg-slate-950/70 backdrop-blur-sm"
+            onClick={() => setIsPickingBannerOptions(false)}
+          />
+          <div className="bg-slate-900 rounded-lg border border-slate-800 w-full max-w-4xl p-4 relative z-10 modal-content modal-content-opening max-h-[85vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-bold text-slate-50">Choose Banner Image</h3>
+              <button
+                onClick={() => setIsPickingBannerOptions(false)}
+                className="text-slate-400 hover:text-slate-200 transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-400 mb-3">
+              Example banners from <span className="text-slate-200">{selectedBannerMovieTitle}</span>.
+            </p>
+
+            {bannerOptionsLoading ? (
+              <p className="text-sm text-slate-400">Loading banner options...</p>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {bannerOptions.map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    onClick={() => {
+                      setEditFormHeaderImage(option);
+                      setIsPickingBannerOptions(false);
+                    }}
+                    className={`rounded overflow-hidden border transition ${
+                      editFormHeaderImage === option
+                        ? "border-blue-500 ring-2 ring-blue-500/40"
+                        : "border-slate-700 hover:border-blue-500/50"
+                    }`}
+                  >
+                    <img src={option} alt="Banner option" className="w-full h-36 object-cover" />
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}
