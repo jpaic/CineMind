@@ -169,7 +169,10 @@ async def get_full_movie_features(movie_id: int, cache: dict[int, dict[str, Any]
     base = await get_movie_cache_features(movie_id)
 
     has_strong_cache = bool(base.get("genres") and base.get("director") and base.get("title"))
-    features = base if has_strong_cache else await enrich_tmdb_features(base)
+    has_rating = isinstance(base.get("vote_average"), (float, int))
+    # Even if structural metadata exists in cache, we still need a rating for
+    # recommendation cards. Pull TMDB details when vote_average is missing.
+    features = base if has_strong_cache and has_rating else await enrich_tmdb_features(base)
     cache[movie_id] = features
     return features
 
