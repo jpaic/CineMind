@@ -1,154 +1,79 @@
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { RefreshCw, SlidersHorizontal } from 'lucide-react';
 import Card from '../components/Card';
 import FilterBar from '../components/FilterBar';
-import { movieApi } from '../api/movieApi';
-import FilmReelLoading from '../components/FilmReelLoading';
-import { clearPageCache, readPageCache, writePageCache } from '../utils/pageCache';
-
-const DISCOVER_CACHE_TTL_MS = 5 * 60 * 1000;
-
-const normalizeRecommendations = (items) => {
-  if (!Array.isArray(items)) return [];
-
-  const seenIds = new Set();
-
-  return items
-    .map((item) => ({
-      ...item,
-      id: Number(item?.id),
-      title: item?.title || 'Unknown',
-      genres: Array.isArray(item?.genres) ? item.genres : [],
-      rating: Number.isFinite(Number(item?.rating)) ? Number(item.rating) : null,
-    }))
-    .filter((item) => Number.isInteger(item.id) && item.id > 0)
-    .filter((item) => {
-      if (seenIds.has(item.id)) return false;
-      seenIds.add(item.id);
-      return true;
-    });
-};
+import {
+  getDiscoverRecommenderState,
+  startDiscoverRecommenderLoad,
+  subscribeToDiscoverRecommender,
+} from '../utils/discoverRecommender';
 
 export default function Discover() {
-  const [movies, setMovies] = useState([]);
-  const [filteredMovies, setFilteredMovies] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [refreshing, setRefreshing] = useState(false);
-
-  const applyMovies = (items) => {
-    const normalized = normalizeRecommendations(items);
-    setMovies(normalized);
-    setFilteredMovies(normalized);
-    return normalized;
-  };
-
-  const fetchRecommendations = async ({ forceRefresh = false } = {}) => {
-    try {
-      setError(null);
-
-      if (!forceRefresh) {
-        const cached = readPageCache({ key: 'discover', ttlMs: DISCOVER_CACHE_TTL_MS });
-        if (cached) {
-          applyMovies(cached);
-          setLoading(false);
-          return;
-        }
-      }
-
-      const response = await movieApi.getRecommendations(30, forceRefresh);
-      const items = applyMovies(response?.recommendations || []);
-      writePageCache({ key: 'discover', items });
-    } catch (err) {
-      setError(err.message || 'Failed to load recommendations');
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
+  const [discoverState, setDiscoverState] = useState(getDiscoverRecommenderState);
+  const [activeFilters, setActiveFilters] = useState({});
 
   useEffect(() => {
-    fetchRecommendations();
+    const unsubscribe = subscribeToDiscoverRecommender(setDiscoverState);
+    return unsubscribe;
   }, []);
 
-  const handleRefresh = () => {
-    clearPageCache('discover');
-    setRefreshing(true);
-    fetchRecommendations({ forceRefresh: true });
+  const handleFilterChange = (filters) => {
+    setActiveFilters(filters);
   };
 
-  const handleFilterChange = (filters) => {
-    let filtered = [...movies];
+  const filteredMovies = useMemo(() => {
+    let filtered = [...discoverState.movies];
 
-    if (filters.decade && filters.decade !== 'all') {
-      const decadeStart = parseInt(filters.decade);
+    if (activeFilters.decade && activeFilters.decade !== 'all') {
+      const decadeStart = parseInt(activeFilters.decade);
       const decadeEnd = decadeStart + 9;
       filtered = filtered.filter(m => m.year >= decadeStart && m.year <= decadeEnd);
     }
 
-    if (filters.genre && filters.genre !== 'all') {
+    if (activeFilters.genre && activeFilters.genre !== 'all') {
       filtered = filtered.filter(m =>
-        m.genres && m.genres.some(g => g.toLowerCase() === filters.genre.toLowerCase())
+        m.genres && m.genres.some(g => g.toLowerCase() === activeFilters.genre.toLowerCase())
       );
     }
 
-    if (filters.ratingMin !== undefined) {
-      filtered = filtered.filter(m => m.rating >= filters.ratingMin);
+    if (activeFilters.ratingMin !== undefined) {
+      filtered = filtered.filter(m => m.rating >= activeFilters.ratingMin);
     }
-    if (filters.ratingMax !== undefined) {
-      filtered = filtered.filter(m => m.rating <= filters.ratingMax);
+    if (activeFilters.ratingMax !== undefined) {
+      filtered = filtered.filter(m => m.rating <= activeFilters.ratingMax);
     }
 
-    if (filters.sortBy === 'rating-desc') {
+    if (activeFilters.sortBy === 'rating-desc') {
       filtered.sort((a, b) => (b.rating || 0) - (a.rating || 0));
-    } else if (filters.sortBy === 'rating-asc') {
+    } else if (activeFilters.sortBy === 'rating-asc') {
       filtered.sort((a, b) => (a.rating || 0) - (b.rating || 0));
-    } else if (filters.sortBy === 'year-desc') {
+    } else if (activeFilters.sortBy === 'year-desc') {
       filtered.sort((a, b) => (b.year || 0) - (a.year || 0));
-    } else if (filters.sortBy === 'year-asc') {
+    } else if (activeFilters.sortBy === 'year-asc') {
       filtered.sort((a, b) => (a.year || 0) - (b.year || 0));
-    } else if (filters.sortBy === 'title-asc') {
+    } else if (activeFilters.sortBy === 'title-asc') {
       filtered.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
-    } else if (filters.sortBy === 'title-desc') {
+    } else if (activeFilters.sortBy === 'title-desc') {
       filtered.sort((a, b) => (b.title || '').localeCompare(a.title || ''));
     }
 
-    setFilteredMovies(filtered);
+    return filtered;
+  }, [activeFilters, discoverState.movies]);
+
+  const isLoading = discoverState.status === 'loading';
+  const hasError = discoverState.status === 'error';
+  const hasMovies = discoverState.movies.length > 0;
+  const buttonLabel = isLoading
+    ? 'Loading...'
+    : hasMovies
+      ? 'Refresh'
+      : hasError
+        ? 'Retry'
+        : 'Load';
+
+  const handleLoad = () => {
+    startDiscoverRecommenderLoad({ forceRefresh: hasMovies || hasError });
   };
-
-  if (loading) {
-    return (
-      <div className="flex flex-col w-full bg-slate-950 text-slate-50 min-h-screen px-6 py-12 relative">
-        <FilmReelLoading isVisible={true} message="Loading recommendations..." blocking={false} />
-
-        <div className="max-w-7xl mx-auto w-full">
-          <div className="flex items-center justify-between mb-2">
-            <h2 className="text-3xl font-bold">Recommended For You</h2>
-            <button disabled className="p-2 hover:bg-slate-800 rounded transition opacity-50">
-              <RefreshCw className="w-5 h-5" />
-            </button>
-          </div>
-          <p className="text-slate-400 mb-8">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex flex-col w-full bg-slate-950 text-slate-50 min-h-screen items-center justify-center px-6">
-        <div className="text-center">
-          <p className="text-slate-100 mb-4">{error}</p>
-          <button
-            onClick={handleRefresh}
-            className="px-4 py-2 bg-blue-500 hover:bg-blue-600 rounded text-sm transition"
-          >
-            Try Again
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="flex flex-col w-full bg-slate-950 text-slate-50 min-h-screen px-6 py-12">
@@ -156,32 +81,42 @@ export default function Discover() {
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-3xl font-bold">Recommended For You</h2>
           <button
-            onClick={handleRefresh}
-            disabled={refreshing}
-            className="p-2 hover:bg-slate-800 rounded transition disabled:opacity-50"
-            title="Refresh"
+            onClick={handleLoad}
+            disabled={isLoading}
+            className="p-2 hover:bg-slate-800 rounded transition disabled:opacity-50 flex items-center gap-2"
+            title={buttonLabel}
           >
-            <RefreshCw className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`} />
+            <span className="text-sm">{buttonLabel}</span>
           </button>
         </div>
 
         <p className="text-slate-400 mb-6">
-          Based on your taste and ratings
+          {isLoading && 'We are building your recommendations now. You can leave and come back anytime.'}
+          {discoverState.status === 'idle' && 'Tap Load to start recommendations. This page stays usable while it runs.'}
+          {discoverState.status === 'ready' && 'Done. These picks are based on your taste and ratings.'}
+          {hasError && `${discoverState.error}. Tap Retry to try again.`}
         </p>
 
-        {movies.length > 0 && (
+        {hasMovies && (
           <FilterBar
-            movies={movies}
+            movies={discoverState.movies}
             onFilterChange={handleFilterChange}
             showRatingFilter={true}
           />
         )}
 
-        {movies.length === 0 ? (
+        {!hasMovies ? (
           <div className="text-center py-20">
             <SlidersHorizontal className="w-16 h-16 mx-auto mb-4 text-slate-700" />
-            <p className="text-slate-400 text-lg">No recommendations yet</p>
-            <p className="text-slate-500 text-sm mt-2">Rate a few more movies to personalize your Discover feed</p>
+            <p className="text-slate-400 text-lg">
+              {isLoading ? 'Recommender is running...' : 'No recommendations loaded yet'}
+            </p>
+            <p className="text-slate-500 text-sm mt-2">
+              {isLoading
+                ? 'Feel free to browse other pages. Your results will appear when you return.'
+                : 'Press Load to start. Once done, your recommendations will appear here.'}
+            </p>
           </div>
         ) : filteredMovies.length === 0 ? (
           <div className="text-center py-20">
