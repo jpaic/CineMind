@@ -1,38 +1,24 @@
 # CineMind
 
-CineMind is a personalized movie discovery platform that helps users find films they haven’t watched but will love. By combining **user ratings**, **watch history**, and **preferences**, CineMind generates tailored movie recommendations using machine learning.
+CineMind is a personalized movie discovery platform that helps users find films they haven’t watched but will likely enjoy. By combining **user ratings**, **watch history**, and **movie metadata**, CineMind generates tailored recommendations through a dynamic recommendation algorithm.
 
 ---
 
 ## Table of Contents
 
-- [Demo Version](#demo-version)
 - [Overview](#overview)
+- [Live Demo](#live-demo)
+- [Demo Version](#demo-version)
 - [Key Features](#key-features)
 - [Tech Stack](#tech-stack)
-- [ML & Recommendation System](#ml--recommendation-system)
+- [Recommendation System](#recommendation-system)
 - [License](#license)
 
 ---
 
-## Demo Version
+## Live Demo
 
-Want a fast way to experience CineMind without signing up? Use the built-in demo route:
-
-- **How it works**: opening `/demo` starts a temporary authenticated session automatically.  
-- **Session type**: **read-only** (safe for portfolio/recruiter walkthroughs).  
-- **What you can test**:  
-  - Dashboard and profile views  
-  - Discover/recommendation flow  
-  - Navigation and UI/UX across tabs  
-- **What is disabled in demo mode**:  
-  - Adding or deleting movies  
-  - Updating ratings  
-  - Watchlist writes  
-  - Account/profile mutation actions  
-- **Visual indicator**: the app shows a **Demo Mode (Read-only)** banner while the session is active.  
-
-This keeps the live demo stable while still showcasing the full product experience and recommendation pipeline.
+https://cine-mind-one.vercel.app
 
 ---
 
@@ -40,45 +26,100 @@ This keeps the live demo stable while still showcasing the full product experien
 
 The goal of CineMind is to make movie discovery effortless and personalized. Users can:
 
-- Rate or add movies to their profile.  
-- View personalized movie recommendations.  
-- Explore their rated movies and profile stats.  
+- Rate and manage movies in their personal library  
+- Receive tailored movie recommendations  
+- Explore their activity through a clean dashboard interface  
 
-The recommendations are driven by a **machine learning model** that predicts movies a user might enjoy based on their ratings and other metadata (genres, actors, directors, etc.).
+The system continuously adapts recommendations based on user interaction and preferences.
+
+---
+
+## Demo Version
+
+Want a fast way to experience CineMind without signing up? Use the built-in demo route:
+
+- **How it works**: opening `/demo` starts a temporary authenticated session automatically  
+- **Session type**: **read-only** (ideal for recruiters and quick previews)  
+- **What you can test**:  
+  - Dashboard and profile views  
+  - Recommendation flow  
+  - Navigation and UI/UX  
+- **What is disabled**:  
+  - Adding or deleting movies  
+  - Updating ratings  
+  - Watchlist modifications  
+  - Profile/account changes  
+- **Visual indicator**: a **Demo Mode (Read-only)** banner is shown  
+
+This ensures a stable and consistent demo experience.
 
 ---
 
 ## Key Features
 
-- **User Authentication**: Login and signup system.  
-- **Dashboard Tabs**:  
-  - **Dashboard**: Overview and quick stats of your activity.  
-  - **Discover**: ML-generated movie recommendations.  
-  - **Rate Movies**: Add or rate movies to improve recommendations.  
-  - **My Movies**: Library of your rated movies.  
-  - **Profile**: Summary of your preferences and activity.
-- The recommendations are driven by a **machine learning model** that predicts movies based on your previous ratings
-- **Responsive Design**: Works on mobile, tablet, and desktop.  
-- **Frontend**: React, Vite, Tailwind CSS  
-- **Backend / ML**: Python, Flask/FastAPI, scikit-learn 
-- **Database**: PostgreSQL
-- **Machine Learning**: Collaborative filtering, content-based filtering, or hybrid models  
+- **Authentication System**  
+  Secure login and signup using JWT-based authentication  
+
+- **Personalized Recommendations**  
+  Dynamic suggestions based on user ratings and movie attributes  
+
+- **Dashboard Interface**  
+  - Overview of user activity  
+  - Quick stats and insights  
+
+- **Movie Management**  
+  - Add and rate movies  
+  - Maintain a personal movie library  
+
+- **Responsive Design**  
+  Fully optimized for mobile, tablet, and desktop  
+
+- **Modern UI/UX**  
+  Clean and intuitive interface built with modern frontend tools  
 
 ---
 
-## ML & Recommendation System
+## Tech Stack
 
-- **Input Data**: User ratings, movie metadata (genres, actors, directors), watch history.  
-- **Model Approach**:
-  - **Collaborative Filtering**: Predicts user ratings based on similar users.  
-  - **Content-Based Filtering**: Recommends movies similar to ones the user liked.  
-  - **Hybrid**: Combines both approaches for higher accuracy.  
-- **Training**:
-  - Preprocessing of movie and user data.  
-  - Model trained offline and served via an API.  
-- **Serving Recommendations**:
-  - Frontend requests recommendations from the backend API.  
-  - Recommendations update as users rate/add movies.  
+### Frontend
+- React 19  
+- Vite  
+- Tailwind CSS  
+
+### Backend / API
+- Node.js  
+- Express.js  
+
+### Database
+- PostgreSQL (Neon Serverless)  
+
+### Utilities & Services
+- Resend (email service)  
+- js-cookie (client-side session handling)  
+- PapaParse (CSV data processing)  
+
+### Deployment
+- Vercel (Frontend + Backend)
+
+---
+
+## Recommendation System
+
+CineMind uses a **custom recommendation algorithm** to generate personalized suggestions.
+
+### Input Data
+- User ratings  
+- Watch history  
+- Movie metadata (genres, actors, etc.)  
+
+### Approach
+- Scores movies based on similarity to user preferences  
+- Prioritizes genres and patterns from highly rated content  
+- Updates dynamically as users rate more movies  
+
+### Delivery
+- Recommendations are generated via the backend API  
+- The frontend fetches and displays results in real time  
 
 ---
 
