@@ -7,6 +7,49 @@ const DISCOVER_CACHE_TTL_MS = 5 * 60 * 1000;
 const listeners = new Set();
 let activeLoadPromise = null;
 
+const clampFiveStarRating = (value) => {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) return null;
+
+  // IMDb/TMDB ratings are often on a 10-point scale, while our UI is 5 stars.
+  const normalized = parsed > 5 ? parsed / 2 : parsed;
+  return Math.max(0.5, Math.min(5, Number(normalized.toFixed(1))));
+};
+
+const parseImdbRatingValue = (value) => {
+  if (value === null || value === undefined) return null;
+  if (typeof value === 'number') return value;
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    const matched = trimmed.match(/(\d+(\.\d+)?)/);
+    if (!matched) return null;
+    return Number(matched[1]);
+  }
+  return null;
+};
+
+const normalizeRecommendationRating = (item) => {
+  const candidateValues = [
+    item?.rating,
+    item?.vote_average,
+    item?.imdbRating,
+    item?.imdb_rating,
+    item?.rating_stats?.imdb,
+    item?.rating_stats?.imdb_rating,
+    item?.rating_stats?.average,
+    item?.rating_stats?.avg,
+  ];
+
+  for (const rawValue of candidateValues) {
+    const parsed = parseImdbRatingValue(rawValue);
+    const normalized = clampFiveStarRating(parsed);
+    if (normalized !== null) return normalized;
+  }
+
+  return null;
+};
+
 const normalizeRecommendations = (items) => {
   if (!Array.isArray(items)) return [];
 
@@ -18,7 +61,7 @@ const normalizeRecommendations = (items) => {
       id: Number(item?.id),
       title: item?.title || 'Unknown',
       genres: Array.isArray(item?.genres) ? item.genres : [],
-      rating: Number.isFinite(Number(item?.rating)) ? Number(item.rating) : null,
+      rating: normalizeRecommendationRating(item),
     }))
     .filter((item) => Number.isInteger(item.id) && item.id > 0)
     .filter((item) => {
