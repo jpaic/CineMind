@@ -115,6 +115,60 @@ export async function getShowcase(req, res) {
   }
 }
 
+export async function getProfileBootstrap(req, res) {
+  try {
+    const libraryResult = await db.query(
+      `SELECT
+         um.movie_id,
+         um.rating,
+         um.watched_date,
+         um.updated_at,
+         mc.title,
+         mc.year,
+         mc.director,
+         mc.director_id,
+         mc.genres,
+         mc.poster_path
+       FROM user_movies um
+       LEFT JOIN movie_cache mc
+         ON mc.movie_id = um.movie_id
+        AND mc.last_updated > NOW() - INTERVAL '7 days'
+       WHERE um.user_id = $1
+       ORDER BY um.watched_date DESC`,
+      [req.user.id]
+    );
+
+    const showcaseResult = await db.query(
+      `SELECT ups.position, um.movie_id
+       FROM user_profile_showcase ups
+       JOIN user_movies um ON ups.movie_id = um.id
+       WHERE ups.user_id = $1
+       ORDER BY ups.position`,
+      [req.user.id]
+    );
+
+    const movies = libraryResult.rows.map((row) => ({
+      movie_id: row.movie_id,
+      rating: row.rating,
+      watched_date: row.watched_date,
+      updated_at: row.updated_at,
+      title: row.title,
+      year: row.year,
+      director: row.director,
+      director_id: row.director_id,
+      genres: row.genres,
+      poster_path: row.poster_path,
+    }));
+
+    const showcase = showcaseResult.rows;
+
+    res.json({ success: true, movies, showcase });
+  } catch (error) {
+    console.error("Get profile bootstrap error:", error);
+    res.status(500).json({ success: false, error: "Failed to get profile bootstrap data" });
+  }
+}
+
 export async function setShowcasePosition(req, res) {
   const client = await db.connect();
   let transactionStarted = false;

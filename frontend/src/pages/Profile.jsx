@@ -24,103 +24,112 @@ export default function Profile() {
 
   // Load showcase and library on mount
   useEffect(() => {
+    const cachedBootstrap = movieApi.getCachedProfileBootstrapSnapshot();
+    if (cachedBootstrap?.success) {
+      applyBootstrapData(cachedBootstrap);
+      setLoading(false);
+      loadShowcaseAndLibrary({ forceRefresh: true, showLoading: false });
+      return;
+    }
+
     loadShowcaseAndLibrary();
   }, []);
 
-  const loadShowcaseAndLibrary = async () => {
-    try {
-      setLoading(true);
+  const applyBootstrapData = (bootstrapData) => {
+    const userMovies = bootstrapData.movies || [];
+    const showcaseItems = (bootstrapData.showcase || []).map((item) => ({
+      ...item,
+      position: item.position - 1,
+    }));
 
-      // Load both library and showcase in parallel
-      const [libraryData, showcaseData] = await Promise.all([
-        movieApi.getLibrary(),
-        movieApi.getShowcase()
-      ]);
+    if (userMovies.length === 0) {
+      setUserLibrary([]);
+      setShowcase([null, null, null, null]);
+      return [];
+    }
 
-      const userMovies = libraryData.movies || [];
-      const showcaseItems = showcaseData.showcase || [];
+    const enrichedMovies = userMovies.map((movie) => ({
+      id: movie.movie_id,
+      title: movie.title || 'Loading...',
+      rating: movie.rating,
+      year: movie.year || null,
+      poster: movie.poster_path || null,
+      director: movie.director || null,
+      directorId: movie.director_id || null,
+      genres: movie.genres
+        ? (typeof movie.genres === 'string' ? JSON.parse(movie.genres) : movie.genres)
+        : [],
+      watchedDate: movie.watched_date,
+      updatedAt: movie.updated_at,
+    }));
 
-      if (userMovies.length === 0) {
-        setUserLibrary([]);
-        setShowcase([null, null, null, null]);
-        return;
-      }
+    setUserLibrary(enrichedMovies);
 
-      // Get movie IDs for bulk cache lookup
-      const movieIds = userMovies.map(m => m.movie_id);
-
-      // Try to get cached data first (single bulk request)
-      const cacheResult = await movieApi.getCachedMoviesBulk(movieIds);
-      const cachedMovies = cacheResult.movies || [];
-      const cachedById = new Map(cachedMovies.map((movie) => [movie.movie_id, movie]));
-
-      // Render immediately with cached data, then hydrate missing metadata in the background.
-      const uncachedIds = movieIds.filter(
-        id => !cachedById.has(id)
-      );
-
-      // Combine user ratings with available cache data first.
-      const enrichedMovies = userMovies.map(userMovie => {
-        const cached = cachedById.get(userMovie.movie_id);
-        
-        return {
-          id: userMovie.movie_id,
-          title: cached ? cached.title : 'Loading...',
-          rating: userMovie.rating,
-          year: cached ? cached.year : null,
-          poster: cached ? cached.poster_path : null,
-          director: cached ? cached.director : null,
-          directorId: cached ? cached.director_id : null,
-          genres: cached ? (typeof cached.genres === 'string' ? JSON.parse(cached.genres) : cached.genres) : [],
-          watchedDate: userMovie.watched_date,
-          updatedAt: userMovie.updated_at,
-        };
-      });
-
-      setUserLibrary(enrichedMovies);
-
-      const newShowcase = [null, null, null, null];
-      for (const item of showcaseItems) {
-        if (item.position >= 0 && item.position <= 3) {
-          const movie = enrichedMovies.find(m => m.id === item.movie_id);
-          if (movie) {
-            newShowcase[item.position] = movie;
-          }
+    const movieById = new Map(enrichedMovies.map((movie) => [movie.id, movie]));
+    const newShowcase = [null, null, null, null];
+    for (const item of showcaseItems) {
+      if (item.position >= 0 && item.position <= 3) {
+        const showcaseMovie = movieById.get(item.movie_id);
+        if (showcaseMovie) {
+          newShowcase[item.position] = showcaseMovie;
         }
       }
+    }
+    setShowcase(newShowcase);
 
-      setShowcase(newShowcase);
+    return enrichedMovies;
+  };
 
-      if (uncachedIds.length > 0) {
-        tmdbService.getMoviesDetails(uncachedIds).then((tmdbDetails) => {
-          const tmdbById = new Map(tmdbDetails.map((movie) => [movie.id, movie]));
+  const hydrateMissingMovieDetails = (movies) => {
+    const uncachedIds = movies
+      .filter((movie) => movie.title === 'Loading...')
+      .map((movie) => movie.id);
 
-          setUserLibrary((prevMovies) => prevMovies.map((movie) => {
-            const tmdb = tmdbById.get(movie.id);
-            if (!tmdb) return movie;
+    if (uncachedIds.length === 0) {
+      return;
+    }
 
-            return {
-              ...movie,
-              title: movie.title === 'Loading...' ? (tmdb.title || movie.title) : movie.title,
-              year: movie.year || tmdb.year || null,
-              poster: movie.poster || tmdb.poster || null,
-              director: movie.director || tmdb.director || null,
-              directorId: movie.directorId || tmdb.directorId || null,
-              genres: movie.genres?.length ? movie.genres : (tmdb.genres || []),
-            };
-          }));
+    tmdbService.getMoviesDetails(uncachedIds).then((tmdbDetails) => {
+      const tmdbById = new Map(tmdbDetails.map((movie) => [movie.id, movie]));
 
-          const cachePromises = tmdbDetails.map(movie =>
-            movieApi.cacheMovie(movie).catch(() => {})
-          );
-          Promise.all(cachePromises).catch(() => {});
-        }).catch(() => {});
+      setUserLibrary((prevMovies) => prevMovies.map((movie) => {
+        const tmdb = tmdbById.get(movie.id);
+        if (!tmdb) return movie;
+
+        return {
+          ...movie,
+          title: movie.title === 'Loading...' ? (tmdb.title || movie.title) : movie.title,
+          year: movie.year || tmdb.year || null,
+          poster: movie.poster || tmdb.poster || null,
+          director: movie.director || tmdb.director || null,
+          directorId: movie.directorId || tmdb.directorId || null,
+          genres: movie.genres?.length ? movie.genres : (tmdb.genres || []),
+        };
+      }));
+
+      const cachePromises = tmdbDetails.map(movie =>
+        movieApi.cacheMovie(movie).catch(() => {})
+      );
+      Promise.all(cachePromises).catch(() => {});
+    }).catch(() => {});
+  };
+
+  const loadShowcaseAndLibrary = async ({ forceRefresh = false, showLoading = true } = {}) => {
+    try {
+      if (showLoading) {
+        setLoading(true);
       }
+
+      const bootstrapData = await movieApi.getProfileBootstrap({ forceRefresh });
+      const enrichedMovies = applyBootstrapData(bootstrapData);
+      hydrateMissingMovieDetails(enrichedMovies);
     } catch {
       setUserLibrary([]);
       setShowcase([null, null, null, null]);
     } finally {
-      setLoading(false);
+      if (showLoading) {
+        setLoading(false);
+      }
     }
   };
 
