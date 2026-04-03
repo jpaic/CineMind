@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { Search, X } from 'lucide-react';
 import { FiSettings } from 'react-icons/fi';
 import { authUtils } from '../utils/authUtils';
+import { movieApi } from '../api/movieApi';
 import logo from '../assets/logo.png';
 
 export default function Navbar({ loggedIn, onLogout, onStartTransition }) {
@@ -102,6 +103,16 @@ export default function Navbar({ loggedIn, onLogout, onStartTransition }) {
       onClick={() => {
         navigate(btn.path);
         setMobileMenuOpen(false);
+      }}
+      onMouseEnter={() => {
+        if (btn.path === '/profile') {
+          movieApi.prefetchProfileBootstrap();
+        }
+      }}
+      onFocus={() => {
+        if (btn.path === '/profile') {
+          movieApi.prefetchProfileBootstrap();
+        }
       }}
     >
       {btn.label}
