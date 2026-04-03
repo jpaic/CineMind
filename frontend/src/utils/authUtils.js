@@ -1,4 +1,5 @@
 import Cookies from "js-cookie";
+import { clearAllPageCaches } from "./pageCache";
 
 const TOKEN_KEY = "authToken";
 const USERNAME_KEY = "username";
@@ -114,6 +115,7 @@ export const authUtils = {
     sessionStorage.removeItem("token");
     sessionStorage.removeItem("username");
     sessionStorage.removeItem(DEMO_MODE_KEY);
+    clearAllPageCaches();
 
     // Double-check: force removal with path variations (some cookies might have paths)
     Cookies.remove(TOKEN_KEY, { path: "/" });

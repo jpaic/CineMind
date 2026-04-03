@@ -7,6 +7,8 @@ import { tmdbService } from '../api/tmdb';
 import FilmReelLoading from '../components/FilmReelLoading';
 import { readPageCache, writePageCache } from '../utils/pageCache';
 
+const LIBRARY_BATCH_SIZE = 50;
+
 export default function MyMovies() {
   const [movies, setMovies] = useState([]);
   const [filteredMovies, setFilteredMovies] = useState([]);
@@ -18,6 +20,11 @@ export default function MyMovies() {
     try {
       setError(null);
 
+      if (forceRefresh) {
+        setMovies([]);
+        setFilteredMovies([]);
+      }
+
       if (!forceRefresh) {
         const cached = readPageCache({ key: 'library', mutationAware: true });
         if (cached) {
@@ -28,78 +35,100 @@ export default function MyMovies() {
         }
       }
       
-      const libraryData = await movieApi.getLibrary();
-      const libraryItems = libraryData.movies || [];
+      let offset = 0;
+      let hasLoadedAnySegment = false;
 
-      if (libraryItems.length === 0) {
+      const appendSegment = (segmentMovies) => {
+        setMovies((prev) => {
+          const next = [...prev, ...segmentMovies];
+          setFilteredMovies(next);
+          writePageCache({ key: 'library', items: next, mutationAware: true });
+          return next;
+        });
+      };
+
+      while (true) {
+        const libraryData = await movieApi.getLibrary(LIBRARY_BATCH_SIZE, offset);
+        const libraryItems = libraryData.movies || [];
+
+        if (libraryItems.length === 0) {
+          break;
+        }
+
+        hasLoadedAnySegment = true;
+
+        const movieIds = libraryItems.map(item => item.movie_id);
+
+        const cacheResult = await movieApi.getCachedMoviesBulk(movieIds);
+        const cachedMovies = cacheResult.movies || [];
+        const cachedById = new Map(cachedMovies.map((movie) => [movie.movie_id, movie]));
+
+        const uncachedIds = movieIds.filter((id) => !cachedById.has(id));
+
+        const enrichedSegment = libraryItems.map(item => {
+          const cached = cachedById.get(item.movie_id);
+
+          return {
+            id: item.movie_id,
+            title: cached ? cached.title : 'Loading...',
+            year: cached ? cached.year : null,
+            poster: cached ? cached.poster_path : null,
+            director: cached ? cached.director : null,
+            directorId: cached ? cached.director_id : null,
+            genres: cached ? (typeof cached.genres === 'string' ? JSON.parse(cached.genres) : cached.genres) : [],
+            rating: item.rating,
+            watchedAt: item.watched_at,
+          };
+        });
+
+        appendSegment(enrichedSegment);
+
+        if (loading) {
+          setLoading(false);
+        }
+
+        if (uncachedIds.length > 0) {
+          tmdbService.getMoviesDetails(uncachedIds).then((tmdbDetails) => {
+            const tmdbById = new Map(tmdbDetails.map((movie) => [movie.id, movie]));
+            const hydrateMovie = (movie) => {
+              const tmdb = tmdbById.get(movie.id);
+              if (!tmdb) return movie;
+              return {
+                ...movie,
+                title: movie.title === 'Loading...' ? (tmdb.title || movie.title) : movie.title,
+                year: movie.year || tmdb.year || null,
+                poster: movie.poster || tmdb.poster || null,
+                director: movie.director || tmdb.director || null,
+                directorId: movie.directorId || tmdb.directorId || null,
+                genres: movie.genres?.length ? movie.genres : (tmdb.genres || []),
+              };
+            };
+
+            setMovies((prev) => {
+              const next = prev.map(hydrateMovie);
+              writePageCache({ key: 'library', items: next, mutationAware: true });
+              return next;
+            });
+            setFilteredMovies((prev) => prev.map(hydrateMovie));
+
+            const cachePromises = tmdbDetails.map(movie =>
+              movieApi.cacheMovie(movie).catch(() => {})
+            );
+            Promise.all(cachePromises).catch(() => {});
+          }).catch(() => {});
+        }
+
+        if (libraryItems.length < LIBRARY_BATCH_SIZE) {
+          break;
+        }
+
+        offset += LIBRARY_BATCH_SIZE;
+      }
+
+      if (!hasLoadedAnySegment) {
         setMovies([]);
         setFilteredMovies([]);
         writePageCache({ key: 'library', items: [], mutationAware: true });
-        return;
-      }
-
-      const movieIds = libraryItems.map(item => item.movie_id);
-
-      // Try to get cached data first (single bulk request)
-      const cacheResult = await movieApi.getCachedMoviesBulk(movieIds);
-      const cachedMovies = cacheResult.movies || [];
-      const cachedById = new Map(cachedMovies.map((movie) => [movie.movie_id, movie]));
-
-      // For movies not in cache, fetch from TMDB
-      const uncachedIds = movieIds.filter(
-        id => !cachedById.has(id)
-      );
-
-      // Render instantly from cache, then hydrate missing metadata asynchronously.
-      const enrichedMovies = libraryItems.map(item => {
-        const cached = cachedById.get(item.movie_id);
-        
-        return {
-          id: item.movie_id,
-          title: cached ? cached.title : 'Loading...',
-          year: cached ? cached.year : null,
-          poster: cached ? cached.poster_path : null,
-          director: cached ? cached.director : null,
-          directorId: cached ? cached.director_id : null,
-          genres: cached ? (typeof cached.genres === 'string' ? JSON.parse(cached.genres) : cached.genres) : [],
-          rating: item.rating, // User's rating
-          watchedAt: item.watched_at,
-        };
-      });
-
-      setMovies(enrichedMovies);
-      setFilteredMovies(enrichedMovies);
-      writePageCache({ key: 'library', items: enrichedMovies, mutationAware: true });
-
-      if (uncachedIds.length > 0) {
-        tmdbService.getMoviesDetails(uncachedIds).then((tmdbDetails) => {
-          const tmdbById = new Map(tmdbDetails.map((movie) => [movie.id, movie]));
-          const hydrateMovie = (movie) => {
-            const tmdb = tmdbById.get(movie.id);
-            if (!tmdb) return movie;
-            return {
-              ...movie,
-              title: movie.title === 'Loading...' ? (tmdb.title || movie.title) : movie.title,
-              year: movie.year || tmdb.year || null,
-              poster: movie.poster || tmdb.poster || null,
-              director: movie.director || tmdb.director || null,
-              directorId: movie.directorId || tmdb.directorId || null,
-              genres: movie.genres?.length ? movie.genres : (tmdb.genres || []),
-            };
-          };
-
-          setMovies((prev) => {
-            const next = prev.map(hydrateMovie);
-            writePageCache({ key: 'library', items: next, mutationAware: true });
-            return next;
-          });
-          setFilteredMovies((prev) => prev.map(hydrateMovie));
-
-          const cachePromises = tmdbDetails.map(movie =>
-            movieApi.cacheMovie(movie).catch(() => {})
-          );
-          Promise.all(cachePromises).catch(() => {});
-        }).catch(() => {});
       }
     } catch (err) {
       setError(err.message || 'Failed to load library');

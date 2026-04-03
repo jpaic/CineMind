@@ -108,3 +108,10 @@ export const clearPageCache = (key) => {
   if (!cacheKey) return;
   safeSessionStorage.removeItem(cacheKey);
 };
+
+export const clearAllPageCaches = () => {
+  Object.values(CACHE_KEYS).forEach((cacheKey) => {
+    safeSessionStorage.removeItem(cacheKey);
+  });
+  safeSessionStorage.removeItem(COLLECTION_MUTATION_VERSION_KEY);
+};
