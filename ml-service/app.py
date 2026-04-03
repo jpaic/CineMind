@@ -184,6 +184,35 @@ def add_weights(bucket: dict[str, float], keys: list[str], value: float) -> None
         add_weight(bucket, key, value)
 
 
+def decade_start(year: int | None) -> int | None:
+    if not isinstance(year, int):
+        return None
+    if year < 1880:
+        return None
+    return (year // 10) * 10
+
+
+def get_candidate_year_window(rated_features: list[dict[str, Any]]) -> tuple[int, int] | None:
+    rated_decades = sorted(
+        {
+            d
+            for d in (decade_start(features.get("year")) for features in rated_features)
+            if d is not None
+        }
+    )
+
+    if not rated_decades:
+        return None
+
+    # Keep recommendations near the user's taste era and avoid very old decades.
+    min_decade = rated_decades[0]
+    max_decade = rated_decades[-1]
+
+    min_year = min_decade - 20
+    max_year = (max_decade + 10) + 9
+    return (min_year, max_year)
+
+
 async def get_user_ratings(user_id: int) -> list[asyncpg.Record]:
     assert pool is not None
     rows = await pool.fetch(
@@ -320,6 +349,7 @@ async def score_candidates(user_id: int, limit: int) -> dict[str, Any]:
     rated_features = await asyncio.gather(
         *(get_full_movie_features(int(row["movie_id"]), feature_cache) for row in user_rows)
     )
+    candidate_year_window = get_candidate_year_window(rated_features)
 
     for row, features in zip(user_rows, rated_features):
         rating = float(row["rating"])
@@ -340,6 +370,11 @@ async def score_candidates(user_id: int, limit: int) -> dict[str, Any]:
     scored: list[dict[str, Any]] = []
 
     for movie_id, features in zip(candidate_ids, candidate_features):
+        if candidate_year_window and isinstance(features.get("year"), int):
+            min_year, max_year = candidate_year_window
+            if features["year"] < min_year or features["year"] > max_year:
+                continue
+
         score = 0.0
         reasons: list[str] = []
 
