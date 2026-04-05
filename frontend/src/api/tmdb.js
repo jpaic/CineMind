@@ -390,28 +390,53 @@ export const tmdbService = {
     };
   },
 
-  searchMovies: async (query) => {
+  searchMovies: async (query, options = {}) => {
+      const requestedPages = Number(options?.maxPages);
+      const maxPages = Number.isInteger(requestedPages) && requestedPages > 0
+        ? Math.min(requestedPages, 5)
+        : 1;
+
       try {
-        const response = await fetch(
-          `${TMDB_BASE_URL}/search/movie?api_key=${API_KEY}&query=${encodeURIComponent(query)}&language=en-US`
+        const pagePromises = Array.from({ length: maxPages }, (_, idx) => {
+          const page = idx + 1;
+          return fetch(
+            `${TMDB_BASE_URL}/search/movie?api_key=${API_KEY}&query=${encodeURIComponent(query)}&language=en-US&page=${page}`
+          );
+        });
+
+        const responses = await Promise.all(pagePromises);
+        const payloads = await Promise.all(
+          responses.map(async (response) => {
+            if (!response.ok) {
+              throw new Error('Search failed');
+            }
+            return response.json();
+          }),
         );
-        
-        if (!response.ok) throw new Error('Search failed');
-        
-        const data = await response.json();
-        
-        return data.results.map(movie => ({
-          id: movie.id,
-          title: movie.title,
-          year: movie.release_date ? new Date(movie.release_date).getFullYear() : null,
-          poster: movie.poster_path 
-            ? `${TMDB_IMAGE_BASE}/w500${movie.poster_path}` 
-            : null,
-          backdrop: movie.backdrop_path
-            ? `${TMDB_IMAGE_BASE}/original${movie.backdrop_path}`
-            : null,
-          overview: movie.overview,
-        }));
+
+        const deduped = new Map();
+        payloads.forEach((data) => {
+          (data.results || []).forEach((movie) => {
+            if (!movie?.id || deduped.has(movie.id)) return;
+            deduped.set(movie.id, {
+              id: movie.id,
+              title: movie.title,
+              originalTitle: movie.original_title || movie.title,
+              year: movie.release_date ? new Date(movie.release_date).getFullYear() : null,
+              poster: movie.poster_path
+                ? `${TMDB_IMAGE_BASE}/w500${movie.poster_path}`
+                : null,
+              backdrop: movie.backdrop_path
+                ? `${TMDB_IMAGE_BASE}/original${movie.backdrop_path}`
+                : null,
+              overview: movie.overview,
+              popularity: Number(movie.popularity) || 0,
+              voteCount: Number(movie.vote_count) || 0,
+            });
+          });
+        });
+
+        return Array.from(deduped.values());
       } catch (error) {
         return [];
       }

@@ -158,23 +158,36 @@ const normalizeTitleForMatch = (value = '') =>
     .replace(/&/g, 'and')
     .replace(/[^a-z0-9]/g, '');
 
+const getExactTitleMatches = (entry, results) => {
+  const targetTitle = normalizeTitleForMatch(entry.title);
+  if (!targetTitle) return [];
+
+  return results.filter((movie) => {
+    const normalizedTitle = normalizeTitleForMatch(movie.title);
+    const normalizedOriginalTitle = normalizeTitleForMatch(movie.originalTitle || '');
+    return normalizedTitle === targetTitle || normalizedOriginalTitle === targetTitle;
+  });
+};
+
 const pickBestSearchMatch = (entry, results) => {
   if (!Array.isArray(results) || results.length === 0) return null;
 
-  const targetTitle = normalizeTitleForMatch(entry.title);
-  if (!targetTitle) return null;
-
-  const exactTitleMatches = results.filter((movie) => normalizeTitleForMatch(movie.title) === targetTitle);
+  const exactTitleMatches = getExactTitleMatches(entry, results);
+  if (exactTitleMatches.length === 0) return null;
 
   if (entry.year) {
-    const exactYear = exactTitleMatches.find((movie) => Number(movie.year) === Number(entry.year));
-    if (exactYear) return exactYear;
+    const exactYearMatches = exactTitleMatches.filter((movie) => Number(movie.year) === Number(entry.year));
+    if (exactYearMatches.length === 1) return exactYearMatches[0];
+    if (exactYearMatches.length > 1) return null;
 
-    const nearYear = exactTitleMatches.find((movie) => {
+    const nearYearMatches = exactTitleMatches.filter((movie) => {
       const movieYear = Number(movie.year);
       return Number.isFinite(movieYear) && Math.abs(movieYear - Number(entry.year)) <= 1;
     });
-    if (nearYear) return nearYear;
+    if (nearYearMatches.length === 1) return nearYearMatches[0];
+    if (nearYearMatches.length > 1) return null;
+
+    if (exactTitleMatches.length === 1) return exactTitleMatches[0];
 
     if (exactTitleMatches.length > 0) return exactTitleMatches[0];
 
@@ -328,8 +341,13 @@ export default function AddMovies({ onMovieAdded }) {
 
               if (!matchedMovie) {
                 const query = entry.year ? `${entry.title} ${entry.year}` : entry.title;
-                const results = await tmdbService.searchMovies(query);
-                matchedMovie = pickBestSearchMatch(entry, results);
+                const primaryResults = await tmdbService.searchMovies(query, { maxPages: 3 });
+                matchedMovie = pickBestSearchMatch(entry, primaryResults);
+
+                if (!matchedMovie && entry.year) {
+                  const titleOnlyResults = await tmdbService.searchMovies(entry.title, { maxPages: 3 });
+                  matchedMovie = pickBestSearchMatch(entry, titleOnlyResults);
+                }
               }
 
               return { entry, matchedMovie };
