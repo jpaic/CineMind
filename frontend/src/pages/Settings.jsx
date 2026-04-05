@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Bell, Palette, Globe, Lock, Check, Loader, X } from 'lucide-react';
 import { authUtils } from '../utils/authUtils';
+import { bumpCollectionMutationVersion } from '../utils/pageCache';
 
 const API_URL = import.meta.env.VITE_API_URL;
 const DEMO_READ_ONLY_MESSAGE = 'Demo mode is read-only. Sign in with a real account to use this action.';
@@ -151,6 +152,7 @@ export default function Settings() {
 
     try {
       await authedFetch('/api/auth/library', { method: 'DELETE' });
+      bumpCollectionMutationVersion();
       setActionMessage('Your library and watchlist were reset successfully.');
     } catch (error) {
       setActionError(error.message || 'Failed to reset your library.');

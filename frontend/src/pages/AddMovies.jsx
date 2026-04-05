@@ -189,6 +189,8 @@ const pickBestSearchMatch = (entry, results) => {
 
     if (exactTitleMatches.length === 1) return exactTitleMatches[0];
 
+    if (exactTitleMatches.length > 0) return exactTitleMatches[0];
+
     return null;
   }
 
