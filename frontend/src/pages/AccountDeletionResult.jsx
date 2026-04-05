@@ -25,7 +25,7 @@ export default function AccountDeletionResult() {
       setSuccess(Boolean(result.success));
       setMessage(result.success ? 'Your account has been deleted successfully.' : (result.error || 'Unable to confirm account deletion.'));
       if (result.success) {
-        authUtils.clearAuth();
+        authUtils.clearAuth({ clearAllCache: true });
       }
       setLoading(false);
     };
