@@ -101,14 +101,14 @@ export const authUtils = {
         sessionStorage.setItem(DEMO_MODE_KEY, "true");
       }
       return data.valid === true;
-    } catch (error) {
+    } catch {
       // On network error, be lenient and assume token might be valid
       // to avoid logging out users due to temporary network issues
       return this.isAuthenticated();
     }
   },
 
-  clearAuth() {
+  clearAuth({ clearAllCache = false } = {}) {
     // Remove from all storage locations synchronously
     Cookies.remove(TOKEN_KEY, { path: "/" });
     Cookies.remove(USERNAME_KEY, { path: "/" });
@@ -121,5 +121,13 @@ export const authUtils = {
     Cookies.remove(TOKEN_KEY, { path: "/" });
     Cookies.remove(USERNAME_KEY, { path: "/" });
 
-  },
+    if (clearAllCache) {
+      try {
+        sessionStorage.clear();
+        localStorage.clear();
+      } catch {
+        // no-op
+      }
+    }
+  }
 };
