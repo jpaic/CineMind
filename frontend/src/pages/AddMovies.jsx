@@ -170,12 +170,13 @@ const pickBestSearchMatch = (entry, results) => {
     const exactYear = exactTitleMatches.find((movie) => Number(movie.year) === Number(entry.year));
     if (exactYear) return exactYear;
 
-    // Conservative fallback: allow +/- 1 year only when title is exact.
     const nearYear = exactTitleMatches.find((movie) => {
       const movieYear = Number(movie.year);
       return Number.isFinite(movieYear) && Math.abs(movieYear - Number(entry.year)) <= 1;
     });
     if (nearYear) return nearYear;
+
+    if (exactTitleMatches.length > 0) return exactTitleMatches[0];
 
     return null;
   }
@@ -307,45 +308,58 @@ export default function AddMovies({ onMovieAdded }) {
       let skipped = 0;
       let unmatched = 0;
 
-      for (const entry of entries) {
-        try {
-          // Keep request pace safely below backend limiter for large imports.
-          await sleep(950);
+      const TMDB_BATCH_SIZE = 10;
+      const resolved = [];
 
-          let matchedMovie = null;
+      for (let i = 0; i < entries.length; i += TMDB_BATCH_SIZE) {
+        const batch = entries.slice(i, i + TMDB_BATCH_SIZE);
+        const batchResults = await Promise.all(
+          batch.map(async (entry) => {
+            try {
+              let matchedMovie = null;
 
-          if (entry.tmdbId) {
-            matchedMovie = await tmdbService.getMovieDetails(entry.tmdbId);
-          }
+              if (entry.tmdbId) {
+                matchedMovie = await tmdbService.getMovieDetails(entry.tmdbId);
+              }
 
-          if (!matchedMovie && entry.imdbId) {
-            matchedMovie = await tmdbService.findMovieByImdbId(entry.imdbId);
-          }
+              if (!matchedMovie && entry.imdbId) {
+                matchedMovie = await tmdbService.findMovieByImdbId(entry.imdbId);
+              }
 
-          if (!matchedMovie) {
-            const query = entry.year ? `${entry.title} ${entry.year}` : entry.title;
-            const results = await tmdbService.searchMovies(query);
-            matchedMovie = pickBestSearchMatch(entry, results);
-          }
+              if (!matchedMovie) {
+                const query = entry.year ? `${entry.title} ${entry.year}` : entry.title;
+                const results = await tmdbService.searchMovies(query);
+                matchedMovie = pickBestSearchMatch(entry, results);
+              }
 
-          if (!matchedMovie?.id) {
-            skipped += 1;
-            unmatched += 1;
-            continue;
-          }
+              return { entry, matchedMovie };
+            } catch {
+              return { entry, matchedMovie: null };
+            }
+          }),
+        );
+        resolved.push(...batchResults);
+      }
 
-          const saved = await addMovieWithRetry({
-            movieId: matchedMovie.id,
-            rating: entry.rating,
-            watchedDate: entry.watchedDate || new Date(),
-          });
+      for (const { entry, matchedMovie } of resolved) {
+        if (!matchedMovie?.id) {
+          skipped += 1;
+          unmatched += 1;
+          continue;
+        }
 
-          if (saved) {
-            imported += 1;
-          } else {
-            skipped += 1;
-          }
-        } catch {
+        await sleep(300);
+
+        const saved = await addMovieWithRetry({
+          movieId: matchedMovie.id,
+          rating: entry.rating,
+          watchedDate: entry.watchedDate || new Date(),
+          maxAttempts: 6,
+        });
+
+        if (saved) {
+          imported += 1;
+        } else {
           skipped += 1;
         }
       }
