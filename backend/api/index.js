@@ -63,6 +63,7 @@ app.use((req, res) => {
       "GET /api/movies/recommendations",
       "GET /api/movies/cache/:movieId",
       "POST /api/movies/cache",
+      "POST /api/movies/cache/bulk-write",
       "POST /api/movies/cache/bulk"
     ]
   });
