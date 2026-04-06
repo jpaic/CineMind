@@ -136,6 +136,18 @@ export const movieApi = {
     return response;
   },
 
+  bulkImportMovies: async (movies) => {
+    ensureWritable();
+    const response = await fetchWithAuth(`${API_BASE_URL}/api/movies/bulk-import`, {
+      method: 'POST',
+      body: JSON.stringify({ movies }),
+    });
+
+    bumpCollectionMutationVersion();
+    movieApi.invalidateProfileBootstrap();
+    return response;
+  },
+
   // Get user's movie library
   getLibrary: async (limit = 50, offset = 0) => {
     const params = new URLSearchParams({

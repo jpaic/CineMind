@@ -49,6 +49,7 @@ app.use((req, res) => {
       "POST /api/auth/login",
       "GET /api/auth/profile",
       "POST /api/movies/add",
+      "POST /api/movies/bulk-import",
       "GET /api/movies/library",
       "PUT /api/movies/:movieId/rating",
       "DELETE /api/movies/:movieId",
