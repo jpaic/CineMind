@@ -8,6 +8,7 @@ import FilmReelLoading from '../components/FilmReelLoading';
 import { readPageCache, writePageCache } from '../utils/pageCache';
 
 const LIBRARY_BATCH_SIZE = 50;
+const MOVIES_PER_PAGE = 100;
 const isCachedMovieMetadataComplete = (cachedMovie) => {
   if (!cachedMovie) return false;
 
@@ -48,6 +49,7 @@ const parseCachedGenres = (genres) => {
 export default function MyMovies() {
   const [movies, setMovies] = useState([]);
   const [filteredMovies, setFilteredMovies] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -59,6 +61,7 @@ export default function MyMovies() {
       if (forceRefresh) {
         setMovies([]);
         setFilteredMovies([]);
+        setCurrentPage(1);
       }
 
       if (!forceRefresh) {
@@ -66,6 +69,7 @@ export default function MyMovies() {
         if (cached) {
           setMovies(cached);
           setFilteredMovies(cached);
+          setCurrentPage(1);
           setLoading(false);
           return;
         }
@@ -164,6 +168,7 @@ export default function MyMovies() {
       if (!hasLoadedAnySegment) {
         setMovies([]);
         setFilteredMovies([]);
+        setCurrentPage(1);
         writePageCache({ key: 'library', items: [], mutationAware: true });
       }
     } catch (err) {
@@ -224,6 +229,37 @@ export default function MyMovies() {
     }
 
     setFilteredMovies(filtered);
+    setCurrentPage(1);
+  };
+
+  const totalPages = Math.max(1, Math.ceil(filteredMovies.length / MOVIES_PER_PAGE));
+  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const pageStartIndex = (safeCurrentPage - 1) * MOVIES_PER_PAGE;
+  const paginatedMovies = filteredMovies.slice(pageStartIndex, pageStartIndex + MOVIES_PER_PAGE);
+
+  const getVisiblePageNumbers = () => {
+    if (totalPages <= 7) {
+      return Array.from({ length: totalPages }, (_, idx) => idx + 1);
+    }
+
+    const pages = [1];
+    const windowStart = Math.max(2, safeCurrentPage - 2);
+    const windowEnd = Math.min(totalPages - 1, safeCurrentPage + 2);
+
+    if (windowStart > 2) {
+      pages.push('...');
+    }
+
+    for (let page = windowStart; page <= windowEnd; page += 1) {
+      pages.push(page);
+    }
+
+    if (windowEnd < totalPages - 1) {
+      pages.push('...');
+    }
+
+    pages.push(totalPages);
+    return pages;
   };
 
   if (loading) {
@@ -289,16 +325,63 @@ export default function MyMovies() {
         )}
 
         {filteredMovies.length > 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-            {filteredMovies.map((movie, index) => (
-              <Card 
-                key={movie.id} 
-                movie={movie} 
-                showRating={true}
-                index={index}
-              />
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+              {paginatedMovies.map((movie, index) => (
+                <Card 
+                  key={movie.id} 
+                  movie={movie} 
+                  showRating={true}
+                  index={index}
+                />
+              ))}
+            </div>
+
+            {totalPages > 1 && (
+              <div className="flex flex-col items-center gap-3 mt-8">
+                <p className="text-sm text-slate-400">
+                  Page {safeCurrentPage} of {totalPages}
+                </p>
+                <div className="flex flex-wrap items-center justify-center gap-2">
+                  <button
+                    onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                    disabled={safeCurrentPage === 1}
+                    className="px-3 py-1.5 rounded bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed text-sm transition"
+                  >
+                    Prev
+                  </button>
+
+                  {getVisiblePageNumbers().map((pageNum, idx) => (
+                    typeof pageNum === 'number' ? (
+                      <button
+                        key={`${pageNum}-${idx}`}
+                        onClick={() => setCurrentPage(pageNum)}
+                        className={`px-3 py-1.5 rounded text-sm transition ${
+                          pageNum === safeCurrentPage
+                            ? 'bg-blue-500 text-white'
+                            : 'bg-slate-800 hover:bg-slate-700 text-slate-200'
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    ) : (
+                      <span key={`ellipsis-${idx}`} className="px-1 text-slate-500 text-sm">
+                        ...
+                      </span>
+                    )
+                  ))}
+
+                  <button
+                    onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                    disabled={safeCurrentPage === totalPages}
+                    className="px-3 py-1.5 rounded bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed text-sm transition"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
         ) : movies.length > 0 ? (
           <div className="text-center py-20">
             <p className="text-slate-400 text-lg">No films match your filters</p>

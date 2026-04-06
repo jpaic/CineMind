@@ -12,12 +12,19 @@ export default function Card({ movie, onClick, showRating = false, index = 0, is
   const [isTogglingWatchlist, setIsTogglingWatchlist] = useState(false);
   const navigate = useNavigate();
 
-  // Check watchlist status on mount (for non-watchlist pages)
+  // Sync local state when parent provides watchlist status explicitly.
   useEffect(() => {
-    if (!isPerson && !movie.inWatchlist) {
+    if (typeof movie.inWatchlist === 'boolean') {
+      setInWatchlist(movie.inWatchlist);
+    }
+  }, [movie.inWatchlist]);
+
+  // Check watchlist status on mount only when status is unknown.
+  useEffect(() => {
+    if (!isPerson && typeof movie.inWatchlist !== 'boolean') {
       checkWatchlistStatus();
     }
-  }, [movie.id, isPerson]);
+  }, [movie.id, isPerson, movie.inWatchlist]);
 
   const checkWatchlistStatus = async () => {
     try {
