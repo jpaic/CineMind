@@ -111,10 +111,7 @@ export default function MyMovies() {
             });
             setFilteredMovies((prev) => prev.map(hydrateMovie));
 
-            const cachePromises = tmdbDetails.map(movie =>
-              movieApi.cacheMovie(movie).catch(() => {})
-            );
-            Promise.all(cachePromises).catch(() => {});
+            movieApi.cacheMoviesBulk(tmdbDetails).catch(() => {});
           }).catch(() => {});
         }
 

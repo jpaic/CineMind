@@ -350,6 +350,29 @@ export const movieApi = {
     });
   },
 
+  // Cache multiple movies in a single request
+  cacheMoviesBulk: async (movies) => {
+    const payload = Array.isArray(movies) ? movies : [];
+    if (payload.length === 0) {
+      return { success: true, cached: 0 };
+    }
+
+    return fetchPublic(`${API_BASE_URL}/api/movies/cache/bulk-write`, {
+      method: 'POST',
+      body: JSON.stringify({
+        movies: payload.map((movie) => ({
+          movie_id: movie.id,
+          title: movie.title,
+          year: movie.year,
+          director: movie.director,
+          director_id: movie.directorId,
+          genres: movie.genres || [],
+          poster_path: movie.poster,
+        })),
+      }),
+    });
+  },
+
   // Get multiple cached movies in bulk
   getCachedMoviesBulk: async (movieIds) => {
     return fetchPublic(`${API_BASE_URL}/api/movies/cache/bulk`, {
