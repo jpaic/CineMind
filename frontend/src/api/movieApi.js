@@ -4,6 +4,7 @@ import { bumpCollectionMutationVersion } from '../utils/pageCache';
 // frontend/src/api/movieApi.js
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 const PROFILE_BOOTSTRAP_TTL_MS = 2 * 60 * 1000;
+const WATCHLIST_TTL_MS = 60 * 1000;
 
 let profileBootstrapCache = {
   data: null,
@@ -12,6 +13,12 @@ let profileBootstrapCache = {
 };
 
 let profileBootstrapInFlight = null;
+let watchlistCache = {
+  ids: null,
+  timestamp: 0,
+  token: null,
+};
+let watchlistInFlight = null;
 
 const getAuthToken = () => {
   const token = authUtils.getToken();
@@ -109,6 +116,54 @@ const setProfileBootstrapCache = (data) => {
     timestamp: Date.now(),
     token: getAuthToken(),
   };
+};
+
+const isWatchlistFresh = () => {
+  const token = getAuthToken();
+  if (!token) return false;
+  if (watchlistCache.token !== token) return false;
+
+  return watchlistCache.ids instanceof Set
+    && Date.now() - watchlistCache.timestamp < WATCHLIST_TTL_MS;
+};
+
+const setWatchlistCache = (watchlistItems = []) => {
+  watchlistCache = {
+    ids: new Set((watchlistItems || []).map((item) => Number(item.movie_id))),
+    timestamp: Date.now(),
+    token: getAuthToken(),
+  };
+};
+
+const invalidateWatchlistCache = () => {
+  watchlistCache = {
+    ids: null,
+    timestamp: 0,
+    token: null,
+  };
+  watchlistInFlight = null;
+};
+
+const getWatchlistIds = async ({ forceRefresh = false } = {}) => {
+  if (!forceRefresh && isWatchlistFresh()) {
+    return watchlistCache.ids;
+  }
+
+  if (!forceRefresh && watchlistInFlight) {
+    return watchlistInFlight;
+  }
+
+  watchlistInFlight = fetchWithAuth(`${API_BASE_URL}/api/movies/watchlist`)
+    .then((data) => {
+      const watchlistItems = Array.isArray(data?.watchlist) ? data.watchlist : [];
+      setWatchlistCache(watchlistItems);
+      return watchlistCache.ids;
+    })
+    .finally(() => {
+      watchlistInFlight = null;
+    });
+
+  return watchlistInFlight;
 };
 
 export const movieApi = {
@@ -281,7 +336,10 @@ export const movieApi = {
   
   // Get user's watchlist
   getWatchlist: async () => {
-    return fetchWithAuth(`${API_BASE_URL}/api/movies/watchlist`);
+    const response = await fetchWithAuth(`${API_BASE_URL}/api/movies/watchlist`);
+    const watchlistItems = Array.isArray(response?.watchlist) ? response.watchlist : [];
+    setWatchlistCache(watchlistItems);
+    return response;
   },
 
   // Add movie to watchlist (with caching)
@@ -297,6 +355,14 @@ export const movieApi = {
       body: JSON.stringify({ movie_id: movieId }),
     });
 
+    if (watchlistCache.ids instanceof Set) {
+      watchlistCache.ids.add(Number(movieId));
+      watchlistCache.timestamp = Date.now();
+      watchlistCache.token = getAuthToken();
+    } else {
+      invalidateWatchlistCache();
+    }
+
     bumpCollectionMutationVersion();
     return response;
   },
@@ -308,13 +374,28 @@ export const movieApi = {
       method: 'DELETE',
     });
 
+    if (watchlistCache.ids instanceof Set) {
+      watchlistCache.ids.delete(Number(movieId));
+      watchlistCache.timestamp = Date.now();
+      watchlistCache.token = getAuthToken();
+    } else {
+      invalidateWatchlistCache();
+    }
+
     bumpCollectionMutationVersion();
     return response;
   },
 
   // Check if movie is in watchlist
   checkWatchlist: async (movieId) => {
-    return fetchWithAuth(`${API_BASE_URL}/api/movies/watchlist/check/${movieId}`);
+    const targetMovieId = Number(movieId);
+
+    try {
+      const ids = await getWatchlistIds();
+      return { success: true, inWatchlist: ids.has(targetMovieId) };
+    } catch {
+      return fetchWithAuth(`${API_BASE_URL}/api/movies/watchlist/check/${movieId}`);
+    }
   },
 
   // ===== RECOMMENDATION ENDPOINTS =====
