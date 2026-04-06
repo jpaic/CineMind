@@ -7,6 +7,7 @@ const router = Router();
 
 // ===== USER MOVIES ROUTES (AUTH REQUIRED) =====
 router.post("/add", authRequired, blockDemoWrites, movieController.addMovie);
+router.post("/bulk-import", authRequired, blockDemoWrites, movieController.addMoviesBulk);
 router.get("/library", authRequired, movieController.getLibrary);
 router.put("/:movieId/rating", authRequired, blockDemoWrites, movieController.updateRating);
 router.delete("/:movieId", authRequired, blockDemoWrites, movieController.deleteMovie);

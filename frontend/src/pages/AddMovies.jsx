@@ -148,8 +148,6 @@ const parseImportCsv = (csvText) => {
   }).filter((entry) => entry.title && entry.rating && entry.rating > 0);
 };
 
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
 const normalizeTitleForMatch = (value = '') =>
   String(value)
     .toLowerCase()
@@ -158,72 +156,153 @@ const normalizeTitleForMatch = (value = '') =>
     .replace(/&/g, 'and')
     .replace(/[^a-z0-9]/g, '');
 
+const stripLeadingArticle = (value = '') => {
+  const normalized = normalizeTitleForMatch(value);
+  return normalized.replace(/^(the|a|an)/, '');
+};
+
 const getExactTitleMatches = (entry, results) => {
   const targetTitle = normalizeTitleForMatch(entry.title);
+  const targetWithoutArticle = stripLeadingArticle(entry.title);
   if (!targetTitle) return [];
 
   return results.filter((movie) => {
     const normalizedTitle = normalizeTitleForMatch(movie.title);
     const normalizedOriginalTitle = normalizeTitleForMatch(movie.originalTitle || '');
-    return normalizedTitle === targetTitle || normalizedOriginalTitle === targetTitle;
+    const normalizedTitleWithoutArticle = stripLeadingArticle(movie.title);
+    const normalizedOriginalWithoutArticle = stripLeadingArticle(movie.originalTitle || '');
+    return normalizedTitle === targetTitle
+      || normalizedOriginalTitle === targetTitle
+      || (targetWithoutArticle && (
+        normalizedTitleWithoutArticle === targetWithoutArticle
+        || normalizedOriginalWithoutArticle === targetWithoutArticle
+      ));
   });
 };
 
 const pickBestSearchMatch = (entry, results) => {
-  if (!Array.isArray(results) || results.length === 0) return null;
-
-  const exactTitleMatches = getExactTitleMatches(entry, results);
-  if (exactTitleMatches.length === 0) return null;
-
-  if (entry.year) {
-    const exactYearMatches = exactTitleMatches.filter((movie) => Number(movie.year) === Number(entry.year));
-    if (exactYearMatches.length === 1) return exactYearMatches[0];
-    if (exactYearMatches.length > 1) return null;
-
-    const nearYearMatches = exactTitleMatches.filter((movie) => {
-      const movieYear = Number(movie.year);
-      return Number.isFinite(movieYear) && Math.abs(movieYear - Number(entry.year)) <= 1;
-    });
-    if (nearYearMatches.length === 1) return nearYearMatches[0];
-    if (nearYearMatches.length > 1) return null;
-
-    if (exactTitleMatches.length === 1) return exactTitleMatches[0];
-
-    if (exactTitleMatches.length > 0) return exactTitleMatches[0];
-
+  if (!Array.isArray(results) || results.length === 0) {
     return null;
   }
 
-  if (exactTitleMatches.length === 1) {
-    return exactTitleMatches[0];
+  const targetTitle = normalizeTitleForMatch(entry.title);
+  const targetNoArticle = stripLeadingArticle(entry.title);
+  const targetYear = Number(entry.year);
+  const candidates = getExactTitleMatches(entry, results);
+
+  if (candidates.length === 0) {
+    return null;
   }
 
-  return null;
+  const scored = candidates.map((movie) => {
+    const title = normalizeTitleForMatch(movie.title);
+    const originalTitle = normalizeTitleForMatch(movie.originalTitle || '');
+    const titleNoArticle = stripLeadingArticle(movie.title);
+    const originalNoArticle = stripLeadingArticle(movie.originalTitle || '');
+    const movieYear = Number(movie.year);
+
+    let score = 0;
+
+    if (title === targetTitle || originalTitle === targetTitle) {
+      score += 60;
+    } else if (targetNoArticle && (titleNoArticle === targetNoArticle || originalNoArticle === targetNoArticle)) {
+      score += 45;
+    }
+
+    if (Number.isFinite(targetYear) && Number.isFinite(movieYear)) {
+      const delta = Math.abs(movieYear - targetYear);
+      if (delta === 0) score += 40;
+      else if (delta === 1) score += 26;
+      else if (delta === 2) score += 10;
+    }
+
+    score += Math.min(12, Math.log10((Number(movie.voteCount) || 0) + 1) * 4);
+    score += Math.min(10, Math.log10((Number(movie.popularity) || 0) + 1) * 3);
+
+    return { movie, score };
+  });
+
+  scored.sort((a, b) => b.score - a.score);
+  const winner = scored[0];
+  const runnerUp = scored[1];
+
+  if (!winner || winner.score < 55) {
+    return null;
+  }
+
+  if (runnerUp && winner.score - runnerUp.score < 6) {
+    return null;
+  }
+
+  return winner.movie;
 };
 
-const addMovieWithRetry = async ({ movieId, rating, watchedDate, maxAttempts = 6 }) => {
-  let attempt = 0;
-
-  while (attempt < maxAttempts) {
-    attempt += 1;
-    try {
-      await movieApi.addMovie(movieId, rating, watchedDate || new Date(), null);
-      return true;
-    } catch (err) {
-      const isRateLimited = err?.status === 429 || /rate limit/i.test(err?.message || '');
-      if (!isRateLimited || attempt >= maxAttempts) {
-        return false;
-      }
-
-      const retryDelayMs = Number.isFinite(err?.retryAfterMs) && err.retryAfterMs > 0
-        ? err.retryAfterMs + 250
-        : Math.min(30000, 2500 * attempt);
-
-      await sleep(retryDelayMs);
-    }
+const runWithConcurrency = async (items, worker, concurrency = 30) => {
+  if (!Array.isArray(items) || items.length === 0) {
+    return [];
   }
 
-  return false;
+  const results = new Array(items.length);
+  let nextIndex = 0;
+
+  const workerCount = Math.min(concurrency, items.length);
+  const workers = Array.from({ length: workerCount }, async () => {
+    while (true) {
+      const current = nextIndex;
+      nextIndex += 1;
+      if (current >= items.length) {
+        return;
+      }
+      results[current] = await worker(items[current], current);
+    }
+  });
+
+  await Promise.all(workers);
+  return results;
+};
+
+const resolveImportEntry = async (entry) => {
+  try {
+    if (entry.tmdbId) {
+      return { entry, matchedMovie: { id: entry.tmdbId } };
+    }
+
+    if (entry.imdbId) {
+      const imdbMatch = await tmdbService.findMovieByImdbId(entry.imdbId);
+      if (imdbMatch?.id) {
+        return { entry, matchedMovie: imdbMatch };
+      }
+    }
+
+    const query = entry.title;
+    const primaryResults = await tmdbService.searchMovies(query, {
+      maxPages: 1,
+      year: entry.year || undefined,
+      primaryReleaseYear: entry.year || undefined,
+      region: 'US',
+    });
+    let matchedMovie = pickBestSearchMatch(entry, primaryResults);
+
+    if (!matchedMovie && entry.year) {
+      const titleOnlyResults = await tmdbService.searchMovies(entry.title, {
+        maxPages: 1,
+        region: 'US',
+      });
+      matchedMovie = pickBestSearchMatch(entry, titleOnlyResults);
+    }
+
+    if (!matchedMovie && entry.year) {
+      const wideNetResults = await tmdbService.searchMovies(entry.title, {
+        maxPages: 2,
+        year: entry.year,
+      });
+      matchedMovie = pickBestSearchMatch(entry, wideNetResults);
+    }
+
+    return { entry, matchedMovie: matchedMovie || null };
+  } catch {
+    return { entry, matchedMovie: null };
+  }
 };
 
 export default function AddMovies({ onMovieAdded }) {
@@ -321,43 +400,8 @@ export default function AddMovies({ onMovieAdded }) {
       let skipped = 0;
       let unmatched = 0;
 
-      const TMDB_BATCH_SIZE = 10;
-      const resolved = [];
-
-      for (let i = 0; i < entries.length; i += TMDB_BATCH_SIZE) {
-        const batch = entries.slice(i, i + TMDB_BATCH_SIZE);
-        const batchResults = await Promise.all(
-          batch.map(async (entry) => {
-            try {
-              let matchedMovie = null;
-
-              if (entry.tmdbId) {
-                matchedMovie = await tmdbService.getMovieDetails(entry.tmdbId);
-              }
-
-              if (!matchedMovie && entry.imdbId) {
-                matchedMovie = await tmdbService.findMovieByImdbId(entry.imdbId);
-              }
-
-              if (!matchedMovie) {
-                const query = entry.year ? `${entry.title} ${entry.year}` : entry.title;
-                const primaryResults = await tmdbService.searchMovies(query, { maxPages: 3 });
-                matchedMovie = pickBestSearchMatch(entry, primaryResults);
-
-                if (!matchedMovie && entry.year) {
-                  const titleOnlyResults = await tmdbService.searchMovies(entry.title, { maxPages: 3 });
-                  matchedMovie = pickBestSearchMatch(entry, titleOnlyResults);
-                }
-              }
-
-              return { entry, matchedMovie };
-            } catch {
-              return { entry, matchedMovie: null };
-            }
-          }),
-        );
-        resolved.push(...batchResults);
-      }
+      const resolved = await runWithConcurrency(entries, resolveImportEntry, 35);
+      const moviesToImport = [];
 
       for (const { entry, matchedMovie } of resolved) {
         if (!matchedMovie?.id) {
@@ -366,19 +410,22 @@ export default function AddMovies({ onMovieAdded }) {
           continue;
         }
 
-        await sleep(300);
-
-        const saved = await addMovieWithRetry({
-          movieId: matchedMovie.id,
+        moviesToImport.push({
+          movie_id: matchedMovie.id,
           rating: entry.rating,
-          watchedDate: entry.watchedDate || new Date(),
-          maxAttempts: 6,
+          watched_date: (entry.watchedDate || new Date()).toISOString(),
         });
+      }
 
-        if (saved) {
-          imported += 1;
-        } else {
-          skipped += 1;
+      const IMPORT_CHUNK_SIZE = 250;
+      for (let i = 0; i < moviesToImport.length; i += IMPORT_CHUNK_SIZE) {
+        const chunk = moviesToImport.slice(i, i + IMPORT_CHUNK_SIZE);
+        try {
+          const result = await movieApi.bulkImportMovies(chunk);
+          imported += Number(result?.imported || 0);
+          skipped += Number(result?.skipped || 0);
+        } catch {
+          skipped += chunk.length;
         }
       }
 
