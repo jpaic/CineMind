@@ -148,8 +148,6 @@ const parseImportCsv = (csvText) => {
   }).filter((entry) => entry.title && entry.rating && entry.rating > 0);
 };
 
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
 const normalizeTitleForMatch = (value = '') =>
   String(value)
     .toLowerCase()
@@ -201,29 +199,56 @@ const pickBestSearchMatch = (entry, results) => {
   return null;
 };
 
-const addMovieWithRetry = async ({ movieId, rating, watchedDate, maxAttempts = 6 }) => {
-  let attempt = 0;
-
-  while (attempt < maxAttempts) {
-    attempt += 1;
-    try {
-      await movieApi.addMovie(movieId, rating, watchedDate || new Date(), null);
-      return true;
-    } catch (err) {
-      const isRateLimited = err?.status === 429 || /rate limit/i.test(err?.message || '');
-      if (!isRateLimited || attempt >= maxAttempts) {
-        return false;
-      }
-
-      const retryDelayMs = Number.isFinite(err?.retryAfterMs) && err.retryAfterMs > 0
-        ? err.retryAfterMs + 250
-        : Math.min(30000, 2500 * attempt);
-
-      await sleep(retryDelayMs);
-    }
+const runWithConcurrency = async (items, worker, concurrency = 30) => {
+  if (!Array.isArray(items) || items.length === 0) {
+    return [];
   }
 
-  return false;
+  const results = new Array(items.length);
+  let nextIndex = 0;
+
+  const workerCount = Math.min(concurrency, items.length);
+  const workers = Array.from({ length: workerCount }, async () => {
+    while (true) {
+      const current = nextIndex;
+      nextIndex += 1;
+      if (current >= items.length) {
+        return;
+      }
+      results[current] = await worker(items[current], current);
+    }
+  });
+
+  await Promise.all(workers);
+  return results;
+};
+
+const resolveImportEntry = async (entry) => {
+  try {
+    if (entry.tmdbId) {
+      return { entry, matchedMovie: { id: entry.tmdbId } };
+    }
+
+    if (entry.imdbId) {
+      const imdbMatch = await tmdbService.findMovieByImdbId(entry.imdbId);
+      if (imdbMatch?.id) {
+        return { entry, matchedMovie: imdbMatch };
+      }
+    }
+
+    const query = entry.year ? `${entry.title} ${entry.year}` : entry.title;
+    const primaryResults = await tmdbService.searchMovies(query, { maxPages: 1 });
+    let matchedMovie = pickBestSearchMatch(entry, primaryResults);
+
+    if (!matchedMovie && entry.year) {
+      const titleOnlyResults = await tmdbService.searchMovies(entry.title, { maxPages: 1 });
+      matchedMovie = pickBestSearchMatch(entry, titleOnlyResults);
+    }
+
+    return { entry, matchedMovie: matchedMovie || null };
+  } catch {
+    return { entry, matchedMovie: null };
+  }
 };
 
 export default function AddMovies({ onMovieAdded }) {
@@ -321,43 +346,8 @@ export default function AddMovies({ onMovieAdded }) {
       let skipped = 0;
       let unmatched = 0;
 
-      const TMDB_BATCH_SIZE = 10;
-      const resolved = [];
-
-      for (let i = 0; i < entries.length; i += TMDB_BATCH_SIZE) {
-        const batch = entries.slice(i, i + TMDB_BATCH_SIZE);
-        const batchResults = await Promise.all(
-          batch.map(async (entry) => {
-            try {
-              let matchedMovie = null;
-
-              if (entry.tmdbId) {
-                matchedMovie = await tmdbService.getMovieDetails(entry.tmdbId);
-              }
-
-              if (!matchedMovie && entry.imdbId) {
-                matchedMovie = await tmdbService.findMovieByImdbId(entry.imdbId);
-              }
-
-              if (!matchedMovie) {
-                const query = entry.year ? `${entry.title} ${entry.year}` : entry.title;
-                const primaryResults = await tmdbService.searchMovies(query, { maxPages: 3 });
-                matchedMovie = pickBestSearchMatch(entry, primaryResults);
-
-                if (!matchedMovie && entry.year) {
-                  const titleOnlyResults = await tmdbService.searchMovies(entry.title, { maxPages: 3 });
-                  matchedMovie = pickBestSearchMatch(entry, titleOnlyResults);
-                }
-              }
-
-              return { entry, matchedMovie };
-            } catch {
-              return { entry, matchedMovie: null };
-            }
-          }),
-        );
-        resolved.push(...batchResults);
-      }
+      const resolved = await runWithConcurrency(entries, resolveImportEntry, 35);
+      const moviesToImport = [];
 
       for (const { entry, matchedMovie } of resolved) {
         if (!matchedMovie?.id) {
@@ -366,19 +356,22 @@ export default function AddMovies({ onMovieAdded }) {
           continue;
         }
 
-        await sleep(300);
-
-        const saved = await addMovieWithRetry({
-          movieId: matchedMovie.id,
+        moviesToImport.push({
+          movie_id: matchedMovie.id,
           rating: entry.rating,
-          watchedDate: entry.watchedDate || new Date(),
-          maxAttempts: 6,
+          watched_date: (entry.watchedDate || new Date()).toISOString(),
         });
+      }
 
-        if (saved) {
-          imported += 1;
-        } else {
-          skipped += 1;
+      const IMPORT_CHUNK_SIZE = 250;
+      for (let i = 0; i < moviesToImport.length; i += IMPORT_CHUNK_SIZE) {
+        const chunk = moviesToImport.slice(i, i + IMPORT_CHUNK_SIZE);
+        try {
+          const result = await movieApi.bulkImportMovies(chunk);
+          imported += Number(result?.imported || 0);
+          skipped += Number(result?.skipped || 0);
+        } catch {
+          skipped += chunk.length;
         }
       }
 

@@ -13,6 +13,40 @@ export async function addMovieToLibrary(userId, movieId, rating, watchedDate = n
   return result.rows[0];
 }
 
+export async function addMoviesToLibraryBulk(userId, movies) {
+  if (!Array.isArray(movies) || movies.length === 0) {
+    return [];
+  }
+
+  const payload = movies.map((movie) => ({
+    movie_id: Number(movie.movie_id),
+    rating: Number(movie.rating),
+    watched_date: movie.watched_date,
+  }));
+
+  const result = await db.query(
+    `WITH input_rows AS (
+       SELECT
+         x.movie_id::int AS movie_id,
+         x.rating::numeric AS rating,
+         x.watched_date::timestamptz AS watched_date
+       FROM jsonb_to_recordset($2::jsonb) AS x(movie_id int, rating numeric, watched_date timestamptz)
+     )
+     INSERT INTO user_movies (user_id, movie_id, rating, watched_date)
+     SELECT $1, movie_id, rating, watched_date
+     FROM input_rows
+     ON CONFLICT (user_id, movie_id)
+     DO UPDATE SET
+       rating = EXCLUDED.rating,
+       watched_date = EXCLUDED.watched_date,
+       updated_at = CURRENT_TIMESTAMP
+     RETURNING *`,
+    [userId, JSON.stringify(payload)]
+  );
+
+  return result.rows;
+}
+
 // Get user library
 export async function getUserMovies(userId, limit = 50, offset = 0) {
   const result = await db.query(

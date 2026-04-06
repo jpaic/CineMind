@@ -58,6 +58,64 @@ export async function addMovie(req, res) {
   }
 }
 
+export async function addMoviesBulk(req, res) {
+  try {
+    const userId = req.user.id;
+    const incomingMovies = Array.isArray(req.body?.movies) ? req.body.movies : [];
+
+    if (incomingMovies.length === 0) {
+      return res.status(400).json({ error: "movies array is required" });
+    }
+
+    if (incomingMovies.length > 2000) {
+      return res.status(400).json({ error: "Maximum 2000 movies per request" });
+    }
+
+    const sanitizedMovies = [];
+
+    for (const movie of incomingMovies) {
+      const movieId = parseNumber(movie?.movie_id);
+      if (movieId === null || !Number.isInteger(movieId) || movieId <= 0) {
+        continue;
+      }
+
+      const ratingValidation = validateRating(movie?.rating);
+      if (!ratingValidation.isValid) {
+        continue;
+      }
+
+      let watchedDate = new Date();
+      if (movie?.watched_date !== null && movie?.watched_date !== undefined && movie?.watched_date !== "") {
+        watchedDate = new Date(movie.watched_date);
+        if (Number.isNaN(watchedDate.getTime())) {
+          continue;
+        }
+      }
+
+      sanitizedMovies.push({
+        movie_id: movieId,
+        rating: ratingValidation.rating,
+        watched_date: watchedDate.toISOString(),
+      });
+    }
+
+    if (sanitizedMovies.length === 0) {
+      return res.status(400).json({ error: "No valid movie rows found in request" });
+    }
+
+    const rows = await movieModel.addMoviesToLibraryBulk(userId, sanitizedMovies);
+
+    return res.status(201).json({
+      success: true,
+      imported: rows.length,
+      skipped: incomingMovies.length - sanitizedMovies.length,
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: "Failed to bulk import movies" });
+  }
+}
+
 export async function getLibrary(req, res) {
   try {
     const userId = req.user.id;
