@@ -156,47 +156,85 @@ const normalizeTitleForMatch = (value = '') =>
     .replace(/&/g, 'and')
     .replace(/[^a-z0-9]/g, '');
 
+const stripLeadingArticle = (value = '') => {
+  const normalized = normalizeTitleForMatch(value);
+  return normalized.replace(/^(the|a|an)/, '');
+};
+
 const getExactTitleMatches = (entry, results) => {
   const targetTitle = normalizeTitleForMatch(entry.title);
+  const targetWithoutArticle = stripLeadingArticle(entry.title);
   if (!targetTitle) return [];
 
   return results.filter((movie) => {
     const normalizedTitle = normalizeTitleForMatch(movie.title);
     const normalizedOriginalTitle = normalizeTitleForMatch(movie.originalTitle || '');
-    return normalizedTitle === targetTitle || normalizedOriginalTitle === targetTitle;
+    const normalizedTitleWithoutArticle = stripLeadingArticle(movie.title);
+    const normalizedOriginalWithoutArticle = stripLeadingArticle(movie.originalTitle || '');
+    return normalizedTitle === targetTitle
+      || normalizedOriginalTitle === targetTitle
+      || (targetWithoutArticle && (
+        normalizedTitleWithoutArticle === targetWithoutArticle
+        || normalizedOriginalWithoutArticle === targetWithoutArticle
+      ));
   });
 };
 
 const pickBestSearchMatch = (entry, results) => {
-  if (!Array.isArray(results) || results.length === 0) return null;
-
-  const exactTitleMatches = getExactTitleMatches(entry, results);
-  if (exactTitleMatches.length === 0) return null;
-
-  if (entry.year) {
-    const exactYearMatches = exactTitleMatches.filter((movie) => Number(movie.year) === Number(entry.year));
-    if (exactYearMatches.length === 1) return exactYearMatches[0];
-    if (exactYearMatches.length > 1) return null;
-
-    const nearYearMatches = exactTitleMatches.filter((movie) => {
-      const movieYear = Number(movie.year);
-      return Number.isFinite(movieYear) && Math.abs(movieYear - Number(entry.year)) <= 1;
-    });
-    if (nearYearMatches.length === 1) return nearYearMatches[0];
-    if (nearYearMatches.length > 1) return null;
-
-    if (exactTitleMatches.length === 1) return exactTitleMatches[0];
-
-    if (exactTitleMatches.length > 0) return exactTitleMatches[0];
-
+  if (!Array.isArray(results) || results.length === 0) {
     return null;
   }
 
-  if (exactTitleMatches.length === 1) {
-    return exactTitleMatches[0];
+  const targetTitle = normalizeTitleForMatch(entry.title);
+  const targetNoArticle = stripLeadingArticle(entry.title);
+  const targetYear = Number(entry.year);
+  const candidates = getExactTitleMatches(entry, results);
+
+  if (candidates.length === 0) {
+    return null;
   }
 
-  return null;
+  const scored = candidates.map((movie) => {
+    const title = normalizeTitleForMatch(movie.title);
+    const originalTitle = normalizeTitleForMatch(movie.originalTitle || '');
+    const titleNoArticle = stripLeadingArticle(movie.title);
+    const originalNoArticle = stripLeadingArticle(movie.originalTitle || '');
+    const movieYear = Number(movie.year);
+
+    let score = 0;
+
+    if (title === targetTitle || originalTitle === targetTitle) {
+      score += 60;
+    } else if (targetNoArticle && (titleNoArticle === targetNoArticle || originalNoArticle === targetNoArticle)) {
+      score += 45;
+    }
+
+    if (Number.isFinite(targetYear) && Number.isFinite(movieYear)) {
+      const delta = Math.abs(movieYear - targetYear);
+      if (delta === 0) score += 40;
+      else if (delta === 1) score += 26;
+      else if (delta === 2) score += 10;
+    }
+
+    score += Math.min(12, Math.log10((Number(movie.voteCount) || 0) + 1) * 4);
+    score += Math.min(10, Math.log10((Number(movie.popularity) || 0) + 1) * 3);
+
+    return { movie, score };
+  });
+
+  scored.sort((a, b) => b.score - a.score);
+  const winner = scored[0];
+  const runnerUp = scored[1];
+
+  if (!winner || winner.score < 55) {
+    return null;
+  }
+
+  if (runnerUp && winner.score - runnerUp.score < 6) {
+    return null;
+  }
+
+  return winner.movie;
 };
 
 const runWithConcurrency = async (items, worker, concurrency = 30) => {
@@ -236,13 +274,29 @@ const resolveImportEntry = async (entry) => {
       }
     }
 
-    const query = entry.year ? `${entry.title} ${entry.year}` : entry.title;
-    const primaryResults = await tmdbService.searchMovies(query, { maxPages: 1 });
+    const query = entry.title;
+    const primaryResults = await tmdbService.searchMovies(query, {
+      maxPages: 1,
+      year: entry.year || undefined,
+      primaryReleaseYear: entry.year || undefined,
+      region: 'US',
+    });
     let matchedMovie = pickBestSearchMatch(entry, primaryResults);
 
     if (!matchedMovie && entry.year) {
-      const titleOnlyResults = await tmdbService.searchMovies(entry.title, { maxPages: 1 });
+      const titleOnlyResults = await tmdbService.searchMovies(entry.title, {
+        maxPages: 1,
+        region: 'US',
+      });
       matchedMovie = pickBestSearchMatch(entry, titleOnlyResults);
+    }
+
+    if (!matchedMovie && entry.year) {
+      const wideNetResults = await tmdbService.searchMovies(entry.title, {
+        maxPages: 2,
+        year: entry.year,
+      });
+      matchedMovie = pickBestSearchMatch(entry, wideNetResults);
     }
 
     return { entry, matchedMovie: matchedMovie || null };

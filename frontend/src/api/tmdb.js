@@ -395,12 +395,36 @@ export const tmdbService = {
       const maxPages = Number.isInteger(requestedPages) && requestedPages > 0
         ? Math.min(requestedPages, 5)
         : 1;
+      const year = Number(options?.year);
+      const primaryReleaseYear = Number(options?.primaryReleaseYear);
+      const region = String(options?.region || '').trim();
+      const includeAdult = Boolean(options?.includeAdult);
 
       try {
         const pagePromises = Array.from({ length: maxPages }, (_, idx) => {
           const page = idx + 1;
+          const params = new URLSearchParams({
+            api_key: API_KEY,
+            query: query,
+            language: 'en-US',
+            page: String(page),
+            include_adult: includeAdult ? 'true' : 'false',
+          });
+
+          if (Number.isInteger(year) && year > 1800) {
+            params.set('year', String(year));
+          }
+
+          if (Number.isInteger(primaryReleaseYear) && primaryReleaseYear > 1800) {
+            params.set('primary_release_year', String(primaryReleaseYear));
+          }
+
+          if (region) {
+            params.set('region', region);
+          }
+
           return fetch(
-            `${TMDB_BASE_URL}/search/movie?api_key=${API_KEY}&query=${encodeURIComponent(query)}&language=en-US&page=${page}`
+            `${TMDB_BASE_URL}/search/movie?${params.toString()}`
           );
         });
 
