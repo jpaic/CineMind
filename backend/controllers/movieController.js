@@ -529,12 +529,15 @@ export async function cacheMovie(req, res) {
        VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP)
        ON CONFLICT (movie_id) 
        DO UPDATE SET 
-         title = EXCLUDED.title,
-         year = EXCLUDED.year,
-         director = EXCLUDED.director,
-         director_id = EXCLUDED.director_id,
-         genres = EXCLUDED.genres,
-         poster_path = EXCLUDED.poster_path,
+         title = COALESCE(NULLIF(BTRIM(EXCLUDED.title), ''), movie_cache.title),
+         year = COALESCE(EXCLUDED.year, movie_cache.year),
+         director = COALESCE(NULLIF(BTRIM(EXCLUDED.director), ''), movie_cache.director),
+         director_id = COALESCE(EXCLUDED.director_id, movie_cache.director_id),
+         genres = CASE
+           WHEN EXCLUDED.genres IS NULL OR EXCLUDED.genres = '[]'::jsonb THEN movie_cache.genres
+           ELSE EXCLUDED.genres
+         END,
+         poster_path = COALESCE(NULLIF(BTRIM(EXCLUDED.poster_path), ''), movie_cache.poster_path),
          last_updated = CURRENT_TIMESTAMP`,
       [movie_id, title, year, director, director_id, JSON.stringify(genres), poster_path]
     );
@@ -614,12 +617,15 @@ export async function cacheMoviesBulk(req, res) {
        )
        ON CONFLICT (movie_id)
        DO UPDATE SET
-         title = EXCLUDED.title,
-         year = EXCLUDED.year,
-         director = EXCLUDED.director,
-         director_id = EXCLUDED.director_id,
-         genres = EXCLUDED.genres,
-         poster_path = EXCLUDED.poster_path,
+         title = COALESCE(NULLIF(BTRIM(EXCLUDED.title), ''), movie_cache.title),
+         year = COALESCE(EXCLUDED.year, movie_cache.year),
+         director = COALESCE(NULLIF(BTRIM(EXCLUDED.director), ''), movie_cache.director),
+         director_id = COALESCE(EXCLUDED.director_id, movie_cache.director_id),
+         genres = CASE
+           WHEN EXCLUDED.genres IS NULL OR EXCLUDED.genres = '[]'::jsonb THEN movie_cache.genres
+           ELSE EXCLUDED.genres
+         END,
+         poster_path = COALESCE(NULLIF(BTRIM(EXCLUDED.poster_path), ''), movie_cache.poster_path),
          last_updated = CURRENT_TIMESTAMP`,
       [JSON.stringify(sanitizedMovies)]
     );
