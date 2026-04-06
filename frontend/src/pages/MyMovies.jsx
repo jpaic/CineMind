@@ -8,6 +8,42 @@ import FilmReelLoading from '../components/FilmReelLoading';
 import { readPageCache, writePageCache } from '../utils/pageCache';
 
 const LIBRARY_BATCH_SIZE = 50;
+const isCachedMovieMetadataComplete = (cachedMovie) => {
+  if (!cachedMovie) return false;
+
+  const genres = typeof cachedMovie.genres === 'string'
+    ? (() => {
+      try {
+        const parsed = JSON.parse(cachedMovie.genres);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
+    })()
+    : (Array.isArray(cachedMovie.genres) ? cachedMovie.genres : []);
+
+  return Boolean(
+    cachedMovie.title
+    && cachedMovie.year
+    && cachedMovie.poster_path
+    && cachedMovie.director
+    && cachedMovie.director_id
+    && genres.length > 0
+  );
+};
+
+const parseCachedGenres = (genres) => {
+  if (!genres) return [];
+  if (Array.isArray(genres)) return genres;
+  if (typeof genres !== 'string') return [];
+
+  try {
+    const parsed = JSON.parse(genres);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
 
 export default function MyMovies() {
   const [movies, setMovies] = useState([]);
@@ -63,19 +99,22 @@ export default function MyMovies() {
         const cachedMovies = cacheResult.movies || [];
         const cachedById = new Map(cachedMovies.map((movie) => [movie.movie_id, movie]));
 
-        const uncachedIds = movieIds.filter((id) => !cachedById.has(id));
+        const idsNeedingHydration = movieIds.filter((id) => {
+          const cached = cachedById.get(id);
+          return !isCachedMovieMetadataComplete(cached);
+        });
 
         const enrichedSegment = libraryItems.map(item => {
           const cached = cachedById.get(item.movie_id);
 
           return {
             id: item.movie_id,
-            title: cached ? cached.title : 'Loading...',
+            title: cached?.title || 'Loading...',
             year: cached ? cached.year : null,
             poster: cached ? cached.poster_path : null,
             director: cached ? cached.director : null,
             directorId: cached ? cached.director_id : null,
-            genres: cached ? (typeof cached.genres === 'string' ? JSON.parse(cached.genres) : cached.genres) : [],
+            genres: parseCachedGenres(cached?.genres),
             rating: item.rating,
             watchedAt: item.watched_at,
           };
@@ -87,8 +126,8 @@ export default function MyMovies() {
           setLoading(false);
         }
 
-        if (uncachedIds.length > 0) {
-          tmdbService.getMoviesDetails(uncachedIds).then((tmdbDetails) => {
+        if (idsNeedingHydration.length > 0) {
+          tmdbService.getMoviesDetails(idsNeedingHydration).then((tmdbDetails) => {
             const tmdbById = new Map(tmdbDetails.map((movie) => [movie.id, movie]));
             const hydrateMovie = (movie) => {
               const tmdb = tmdbById.get(movie.id);
