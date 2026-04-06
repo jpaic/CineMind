@@ -50,6 +50,9 @@ router.get("/cache/:movieId", movieController.getCachedMovie);
 // Cache movie data
 router.post("/cache", cacheLimiter, movieController.cacheMovie);
 
+// Cache multiple movies in one request
+router.post("/cache/bulk-write", cacheLimiter, movieController.cacheMoviesBulk);
+
 // Get multiple cached movies
 router.post("/cache/bulk", cacheLimiter, movieController.getCachedMovies);
 

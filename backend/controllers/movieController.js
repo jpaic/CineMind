@@ -568,6 +568,69 @@ export async function getCachedMovies(req, res) {
   }
 }
 
+export async function cacheMoviesBulk(req, res) {
+  try {
+    const incomingMovies = Array.isArray(req.body?.movies) ? req.body.movies : [];
+
+    if (incomingMovies.length === 0) {
+      return res.json({ success: true, cached: 0 });
+    }
+
+    const sanitizedMovies = incomingMovies
+      .map((movie) => ({
+        movie_id: parseNumber(movie?.movie_id),
+        title: typeof movie?.title === "string" ? movie.title.trim() : "",
+        year: parseNumber(movie?.year),
+        director: typeof movie?.director === "string" ? movie.director.trim() : null,
+        director_id: parseNumber(movie?.director_id),
+        genres: Array.isArray(movie?.genres) ? movie.genres : [],
+        poster_path: movie?.poster_path || null,
+      }))
+      .filter((movie) => Number.isInteger(movie.movie_id) && movie.movie_id > 0 && movie.title);
+
+    if (sanitizedMovies.length === 0) {
+      return res.json({ success: true, cached: 0 });
+    }
+
+    await db.query(
+      `INSERT INTO movie_cache (movie_id, title, year, director, director_id, genres, poster_path, last_updated)
+       SELECT
+         x.movie_id::int,
+         x.title::text,
+         x.year::int,
+         x.director::text,
+         x.director_id::int,
+         x.genres::jsonb,
+         x.poster_path::text,
+         CURRENT_TIMESTAMP
+       FROM jsonb_to_recordset($1::jsonb) AS x(
+         movie_id int,
+         title text,
+         year int,
+         director text,
+         director_id int,
+         genres jsonb,
+         poster_path text
+       )
+       ON CONFLICT (movie_id)
+       DO UPDATE SET
+         title = EXCLUDED.title,
+         year = EXCLUDED.year,
+         director = EXCLUDED.director,
+         director_id = EXCLUDED.director_id,
+         genres = EXCLUDED.genres,
+         poster_path = EXCLUDED.poster_path,
+         last_updated = CURRENT_TIMESTAMP`,
+      [JSON.stringify(sanitizedMovies)]
+    );
+
+    return res.json({ success: true, cached: sanitizedMovies.length });
+  } catch (error) {
+    console.error("Bulk cache write error:", error);
+    return res.status(500).json({ success: false, error: "Failed to cache movies in bulk" });
+  }
+}
+
 export async function cleanupCache(req, res) {
   try {
     const result = await db.query(
