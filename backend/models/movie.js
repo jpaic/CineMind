@@ -49,15 +49,27 @@ export async function addMoviesToLibraryBulk(userId, movies) {
 
 // Get user library
 export async function getUserMovies(userId, limit = 50, offset = 0) {
-  const result = await db.query(
+  const [moviesResult, countResult] = await Promise.all([
+    db.query(
     `SELECT *
      FROM user_movies
      WHERE user_id = $1
      ORDER BY watched_date DESC
      LIMIT $2 OFFSET $3`,
     [userId, limit, offset]
-  );
-  return result.rows;
+    ),
+    db.query(
+      `SELECT COUNT(*)::int AS total
+       FROM user_movies
+       WHERE user_id = $1`,
+      [userId]
+    ),
+  ]);
+
+  return {
+    movies: moviesResult.rows,
+    total: countResult.rows[0]?.total || 0,
+  };
 }
 
 // Update rating

@@ -8,7 +8,7 @@ import FilmReelLoading from '../components/FilmReelLoading';
 import { readPageCache, writePageCache } from '../utils/pageCache';
 
 const LIBRARY_BATCH_SIZE = 50;
-const MOVIES_PER_PAGE = 100;
+const MOVIES_PER_PAGE = 60;
 const isCachedMovieMetadataComplete = (cachedMovie) => {
   if (!cachedMovie) return false;
 
@@ -50,6 +50,7 @@ export default function MyMovies() {
   const [movies, setMovies] = useState([]);
   const [filteredMovies, setFilteredMovies] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
+  const [totalMovieCount, setTotalMovieCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -62,6 +63,7 @@ export default function MyMovies() {
         setMovies([]);
         setFilteredMovies([]);
         setCurrentPage(1);
+        setTotalMovieCount(0);
       }
 
       if (!forceRefresh) {
@@ -69,6 +71,7 @@ export default function MyMovies() {
         if (cached) {
           setMovies(cached);
           setFilteredMovies(cached);
+          setTotalMovieCount(cached.length);
           setCurrentPage(1);
           setLoading(false);
           return;
@@ -77,19 +80,19 @@ export default function MyMovies() {
       
       let offset = 0;
       let hasLoadedAnySegment = false;
-
-      const appendSegment = (segmentMovies) => {
-        setMovies((prev) => {
-          const next = [...prev, ...segmentMovies];
-          setFilteredMovies(next);
-          writePageCache({ key: 'library', items: next, mutationAware: true });
-          return next;
-        });
-      };
+      let hasSetTotalCount = false;
+      const collectedMovies = [];
+      const collectedHydrationIds = [];
 
       while (true) {
         const libraryData = await movieApi.getLibrary(LIBRARY_BATCH_SIZE, offset);
         const libraryItems = libraryData.movies || [];
+        const total = Number(libraryData.total || 0);
+
+        if (!hasSetTotalCount) {
+          setTotalMovieCount(total);
+          hasSetTotalCount = true;
+        }
 
         if (libraryItems.length === 0) {
           break;
@@ -107,6 +110,7 @@ export default function MyMovies() {
           const cached = cachedById.get(id);
           return !isCachedMovieMetadataComplete(cached);
         });
+        collectedHydrationIds.push(...idsNeedingHydration);
 
         const enrichedSegment = libraryItems.map(item => {
           const cached = cachedById.get(item.movie_id);
@@ -124,39 +128,7 @@ export default function MyMovies() {
           };
         });
 
-        appendSegment(enrichedSegment);
-
-        if (loading) {
-          setLoading(false);
-        }
-
-        if (idsNeedingHydration.length > 0) {
-          tmdbService.getMoviesDetails(idsNeedingHydration).then((tmdbDetails) => {
-            const tmdbById = new Map(tmdbDetails.map((movie) => [movie.id, movie]));
-            const hydrateMovie = (movie) => {
-              const tmdb = tmdbById.get(movie.id);
-              if (!tmdb) return movie;
-              return {
-                ...movie,
-                title: movie.title === 'Loading...' ? (tmdb.title || movie.title) : movie.title,
-                year: movie.year || tmdb.year || null,
-                poster: movie.poster || tmdb.poster || null,
-                director: movie.director || tmdb.director || null,
-                directorId: movie.directorId || tmdb.directorId || null,
-                genres: movie.genres?.length ? movie.genres : (tmdb.genres || []),
-              };
-            };
-
-            setMovies((prev) => {
-              const next = prev.map(hydrateMovie);
-              writePageCache({ key: 'library', items: next, mutationAware: true });
-              return next;
-            });
-            setFilteredMovies((prev) => prev.map(hydrateMovie));
-
-            movieApi.cacheMoviesBulk(tmdbDetails).catch(() => {});
-          }).catch(() => {});
-        }
+        collectedMovies.push(...enrichedSegment);
 
         if (libraryItems.length < LIBRARY_BATCH_SIZE) {
           break;
@@ -168,8 +140,44 @@ export default function MyMovies() {
       if (!hasLoadedAnySegment) {
         setMovies([]);
         setFilteredMovies([]);
+        setTotalMovieCount(0);
         setCurrentPage(1);
         writePageCache({ key: 'library', items: [], mutationAware: true });
+        return;
+      }
+
+      setMovies(collectedMovies);
+      setFilteredMovies(collectedMovies);
+      setCurrentPage(1);
+      writePageCache({ key: 'library', items: collectedMovies, mutationAware: true });
+
+      if (collectedHydrationIds.length > 0) {
+        const uniqueHydrationIds = [...new Set(collectedHydrationIds)];
+        tmdbService.getMoviesDetails(uniqueHydrationIds).then((tmdbDetails) => {
+          const tmdbById = new Map(tmdbDetails.map((movie) => [movie.id, movie]));
+          const hydrateMovie = (movie) => {
+            const tmdb = tmdbById.get(movie.id);
+            if (!tmdb) return movie;
+            return {
+              ...movie,
+              title: movie.title === 'Loading...' ? (tmdb.title || movie.title) : movie.title,
+              year: movie.year || tmdb.year || null,
+              poster: movie.poster || tmdb.poster || null,
+              director: movie.director || tmdb.director || null,
+              directorId: movie.directorId || tmdb.directorId || null,
+              genres: movie.genres?.length ? movie.genres : (tmdb.genres || []),
+            };
+          };
+
+          setMovies((prev) => {
+            const next = prev.map(hydrateMovie);
+            writePageCache({ key: 'library', items: next, mutationAware: true });
+            return next;
+          });
+          setFilteredMovies((prev) => prev.map(hydrateMovie));
+
+          movieApi.cacheMoviesBulk(tmdbDetails).catch(() => {});
+        }).catch(() => {});
       }
     } catch (err) {
       setError(err.message || 'Failed to load library');
@@ -232,6 +240,7 @@ export default function MyMovies() {
     setCurrentPage(1);
   };
 
+  const visibleMovieCount = filteredMovies.length === movies.length ? totalMovieCount : filteredMovies.length;
   const totalPages = Math.max(1, Math.ceil(filteredMovies.length / MOVIES_PER_PAGE));
   const safeCurrentPage = Math.min(currentPage, totalPages);
   const pageStartIndex = (safeCurrentPage - 1) * MOVIES_PER_PAGE;
@@ -313,7 +322,7 @@ export default function MyMovies() {
         </div>
 
         <p className="text-slate-400 mb-6">
-          {movies.length} {movies.length === 1 ? 'film' : 'films'} watched
+          {visibleMovieCount} {visibleMovieCount === 1 ? 'film' : 'films'} watched
         </p>
 
         {movies.length > 0 && (

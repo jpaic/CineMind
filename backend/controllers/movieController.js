@@ -121,8 +121,12 @@ export async function getLibrary(req, res) {
     const userId = req.user.id;
     const limit = parseNumber(req.query.limit) ?? 50;
     const offset = parseNumber(req.query.offset) ?? 0;
-    const movies = await movieModel.getUserMovies(userId, limit, offset);
-    res.json({ success: true, movies });
+    const libraryResult = await movieModel.getUserMovies(userId, limit, offset);
+    res.json({
+      success: true,
+      movies: libraryResult.movies,
+      total: libraryResult.total,
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Failed to get library" });
