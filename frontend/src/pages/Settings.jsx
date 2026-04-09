@@ -7,17 +7,11 @@ const API_URL = import.meta.env.VITE_API_URL;
 const DEMO_READ_ONLY_MESSAGE = 'Demo mode is read-only. Sign in with a real account to use this action.';
 
 const authedFetch = async (path, options = {}) => {
-  const token = authUtils.getToken();
-
-  if (!token) {
-    throw new Error('You need to be logged in to perform this action.');
-  }
-
   const response = await fetch(`${API_URL}${path}`, {
     ...options,
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
       ...options.headers,
     },
   });

@@ -19,7 +19,7 @@ export default function Login({ onAuthComplete }) {
   const [isSignup, setIsSignup] = useState(location.search.includes("signup"));
   useEffect(() => {
     setIsSignup(location.search.includes("signup"));
-  }, [location.search]);
+  }, [location.search, location.hash]);
 
   const [form, setForm] = useState({
     username: "",
@@ -46,7 +46,8 @@ export default function Login({ onAuthComplete }) {
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
-    const verifyToken = params.get("verifyToken");
+    const hashParams = new URLSearchParams(location.hash.replace(/^#/, ""));
+    const verifyToken = params.get("verifyToken") || hashParams.get("verifyToken");
     const run = async () => {
       if (verifyToken) {
         const result = await verifyEmailToken(verifyToken);
@@ -103,7 +104,7 @@ export default function Login({ onAuthComplete }) {
         return;
       }
 
-      authUtils.setAuth(res.token, res.username, isSignup ? true : rememberMe);
+      authUtils.setAuth(res.username, res.demo === true);
 
       if (onAuthComplete) {
         onAuthComplete();
@@ -131,7 +132,7 @@ export default function Login({ onAuthComplete }) {
       return;
     }
 
-    authUtils.setAuth(res.token, res.username, false, true);
+    authUtils.setAuth(res.username, true);
     if (onAuthComplete) {
       onAuthComplete();
     }

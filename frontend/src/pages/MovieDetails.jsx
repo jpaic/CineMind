@@ -6,10 +6,9 @@ import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { movieApi } from '../api/movieApi';
 import { authUtils } from '../utils/authUtils';
+import { tmdbRequest } from '../api/tmdbProxy';
 
-const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
 const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p';
-const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 
 export default function MovieDetails() {
   const { id } = useParams();
@@ -32,17 +31,10 @@ export default function MovieDetails() {
         setLoading(true);
         setError(null);
 
-        const [movieRes, creditsRes] = await Promise.all([
-          fetch(`${TMDB_BASE_URL}/movie/${id}?api_key=${API_KEY}&language=en-US`),
-          fetch(`${TMDB_BASE_URL}/movie/${id}/credits?api_key=${API_KEY}`)
+        const [movieData, creditsData] = await Promise.all([
+          tmdbRequest(`/movie/${id}`, { language: 'en-US' }),
+          tmdbRequest(`/movie/${id}/credits`)
         ]);
-
-        if (!movieRes.ok || !creditsRes.ok) {
-          throw new Error('Failed to fetch movie details');
-        }
-
-        const movieData = await movieRes.json();
-        const creditsData = await creditsRes.json();
 
         setMovie(movieData);
         setCredits(creditsData);

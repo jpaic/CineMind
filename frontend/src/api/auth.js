@@ -48,7 +48,11 @@ export async function resendSignupVerification(email) {
 
 export async function verifyEmailToken(token) {
   try {
-    const res = await fetch(`${API_URL}/api/auth/verify-email?token=${encodeURIComponent(token)}`);
+    const res = await fetch(`${API_URL}/api/auth/verify-email`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token }),
+    });
     const data = await res.json().catch(() => ({}));
 
     if (!res.ok) {
@@ -63,8 +67,10 @@ export async function verifyEmailToken(token) {
 
 export async function confirmPasswordChange(token) {
   try {
-    const res = await fetch(`${API_URL}/api/auth/password/confirm?token=${encodeURIComponent(token)}`, {
+    const res = await fetch(`${API_URL}/api/auth/password/confirm`, {
       method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token }),
     });
     const data = await res.json().catch(() => ({}));
 
@@ -80,8 +86,10 @@ export async function confirmPasswordChange(token) {
 
 export async function confirmAccountDeletion(token) {
   try {
-    const res = await fetch(`${API_URL}/api/auth/account/confirm-delete?token=${encodeURIComponent(token)}`, {
+    const res = await fetch(`${API_URL}/api/auth/account/confirm-delete`, {
       method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token }),
     });
     const data = await res.json().catch(() => ({}));
 
@@ -101,6 +109,7 @@ export async function startDemoSession() {
     const res = await fetch(`${API_URL}/api/auth/demo-session`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      credentials: "include",
     });
 
     const data = await res.json().catch(() => ({}));
@@ -111,7 +120,6 @@ export async function startDemoSession() {
 
     return {
       success: true,
-      token: data.token,
       username: data.user?.username || "Demo User",
       demo: true,
     };
@@ -126,6 +134,7 @@ export async function loginUser(username, password) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ username, password }),
+      credentials: "include",
     });
 
     if (!res.ok) {
@@ -135,7 +144,7 @@ export async function loginUser(username, password) {
 
     const data = await res.json();
 
-    return { success: true, token: data.token, username: data.user.username };
+    return { success: true, username: data.user.username, demo: data.user.demo === true };
   } catch (error) {
     return { success: false, error: error.message || "Network error" };
   }

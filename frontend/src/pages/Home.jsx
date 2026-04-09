@@ -25,7 +25,7 @@ export default function Home({ onLogout }) {
       headline: "Christopher Nolan's Next Film Sets July 2026 Release Date",
       description: "Universal Pictures confirms a summer release for Nolan's latest original feature.",
       source: "Variety",
-      image: "https://img.logo.dev/variety.com?token=pk_Njb2Bg3ySle5ZdsTqsfQpA&size=200&format=png&retina=true",
+      image: "https://logo.clearbit.com/variety.com",
       url: "https://variety.com",
       timeAgo: "2 days ago"
     },
@@ -33,7 +33,7 @@ export default function Home({ onLogout }) {
       headline: "A24 Leads Independent Spirit Awards With 12 Nominations",
       description: "The indie powerhouse dominates major categories as awards season heats up.",
       source: "The Hollywood Reporter",
-      image: "https://img.logo.dev/hollywoodreporter.com?token=pk_Njb2Bg3ySle5ZdsTqsfQpA&size=200&format=png&retina=true",
+      image: "https://logo.clearbit.com/hollywoodreporter.com",
       url: "https://hollywoodreporter.com",
       timeAgo: "3 days ago"
     },
@@ -41,7 +41,7 @@ export default function Home({ onLogout }) {
       headline: "Cannes Film Festival Reveals 2025 Competition Lineup",
       description: "Festival organizers announce a director-driven slate for the upcoming edition.",
       source: "Deadline",
-      image: "https://img.logo.dev/deadline.com?token=pk_Njb2Bg3ySle5ZdsTqsfQpA&size=200&format=png&retina=true",
+      image: "https://logo.clearbit.com/deadline.com",
       url: "https://deadline.com",
       timeAgo: "5 days ago"
     },
@@ -49,7 +49,7 @@ export default function Home({ onLogout }) {
       headline: "Warner Bros. Unveils Ambitious 2025–2026 Theatrical Slate",
       description: "Major franchises and original projects headline the studio's roadmap.",
       source: "IndieWire",
-      image: "https://img.logo.dev/indiewire.com?token=pk_Njb2Bg3ySle5ZdsTqsfQpA&size=200&format=png&retina=true",
+      image: "https://logo.clearbit.com/indiewire.com",
       url: "https://indiewire.com",
       timeAgo: "6 days ago"
     }
@@ -357,7 +357,7 @@ export default function Home({ onLogout }) {
                           alt={news.source}
                           className="w-24 h-32 object-cover rounded flex-shrink-0 ring-1 ring-slate-700"
                           onError={(e) => {
-                            e.target.src = 'https://img.logo.dev/variety.com?token=pk_Njb2Bg3ySle5ZdsTqsfQpA&size=200&format=png&retina=true';
+                            e.target.src = 'https://logo.clearbit.com/variety.com';
                           }}
                         />
                         <div className="flex-1 min-w-0 flex flex-col justify-center">

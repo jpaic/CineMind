@@ -13,15 +13,27 @@ const app = express();
 app.set("trust proxy", 1);
 
 const allowedOrigins = process.env.FRONTEND_URL
-  ? process.env.FRONTEND_URL.split(",").map(origin => origin.trim())
-  : "*";
+  ? process.env.FRONTEND_URL.split(",").map(origin => origin.trim()).filter(Boolean)
+  : ["http://localhost:5173"];
 
 app.use(cors({
-  origin: allowedOrigins,
-  credentials: Boolean(process.env.FRONTEND_URL),
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    return callback(new Error("CORS origin not allowed"));
+  },
+  credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"]
 }));
+
+app.use((req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("Referrer-Policy", "no-referrer");
+  res.setHeader("Permissions-Policy", "geolocation=(), microphone=(), camera=()");
+  next();
+});
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));

@@ -1,42 +1,16 @@
-import Cookies from "js-cookie";
 import { clearAllPageCaches } from "./pageCache";
 
-const TOKEN_KEY = "authToken";
 const USERNAME_KEY = "username";
 const DEMO_MODE_KEY = "demoMode";
+const AUTH_STATE_KEY = "authActive";
 const API_URL = import.meta.env.VITE_API_URL;
-const isSecureContext = typeof window !== "undefined" && window.location.protocol === "https:";
 
 export const authUtils = {
-  /**
-   * Store the token and username.
-   * @param {string} token - JWT token
-   * @param {string} username - Username
-   * @param {boolean} rememberMe - Use cookie for persistent login
-   * @param {boolean} demoMode - Session is demo/read-only
-   */
-  setAuth(token, username, rememberMe = false, demoMode = false) {
-    if (rememberMe) {
-      const options = {
-        expires: 30,
-        sameSite: "lax",
-        secure: isSecureContext,
-        path: "/"
-      };
-      Cookies.set(TOKEN_KEY, token, options);
-      if (username) Cookies.set(USERNAME_KEY, username, options);
-
-      sessionStorage.removeItem("token");
-      sessionStorage.removeItem("username");
-    } else {
-      // Only use sessionStorage
-      sessionStorage.setItem("token", token);
-      if (username) sessionStorage.setItem("username", username);
-
-      // Remove cookies to avoid persistence
-      Cookies.remove(TOKEN_KEY, { path: "/" });
-      Cookies.remove(USERNAME_KEY, { path: "/" });
+  setAuth(username, demoMode = false) {
+    if (username) {
+      sessionStorage.setItem(USERNAME_KEY, username);
     }
+    sessionStorage.setItem(AUTH_STATE_KEY, "true");
 
     if (demoMode) {
       sessionStorage.setItem(DEMO_MODE_KEY, "true");
@@ -45,81 +19,64 @@ export const authUtils = {
     }
   },
 
-  /** Get the JWT token from storage */
-  getToken() {
-    return (
-      Cookies.get(TOKEN_KEY) ||
-      sessionStorage.getItem("token")
-    );
-  },
-
-  /** Get the username from storage */
   getUsername() {
-    return (
-      Cookies.get(USERNAME_KEY) ||
-      sessionStorage.getItem("username") ||
-      "Guest"
-    );
+    return sessionStorage.getItem(USERNAME_KEY) || "Guest";
   },
 
   isDemoMode() {
     return sessionStorage.getItem(DEMO_MODE_KEY) === "true";
   },
 
-  /** Check if user is authenticated (only checks if token exists) */
   isAuthenticated() {
-    return !!this.getToken();
+    return sessionStorage.getItem(AUTH_STATE_KEY) === "true";
   },
 
-  /**
-   * Verify token with backend API
-   * @returns {Promise<boolean>} True if token is valid
-   */
   async verifyToken() {
-    const token = this.getToken();
-    if (!token) {
-      return false;
-    }
-
     try {
       const response = await fetch(`${API_URL}/api/auth/verify`, {
         method: "GET",
+        credentials: "include",
         headers: {
-          "Authorization": `Bearer ${token}`,
           "Content-Type": "application/json"
         }
       });
 
       if (!response.ok) {
-        // Token is invalid or expired, clear it
         this.clearAuth();
         return false;
       }
 
       const data = await response.json();
+      if (data.username) {
+        sessionStorage.setItem(USERNAME_KEY, data.username);
+      }
       if (data.demo === true) {
         sessionStorage.setItem(DEMO_MODE_KEY, "true");
+      } else {
+        sessionStorage.removeItem(DEMO_MODE_KEY);
       }
+      sessionStorage.setItem(AUTH_STATE_KEY, "true");
       return data.valid === true;
     } catch {
-      // On network error, be lenient and assume token might be valid
-      // to avoid logging out users due to temporary network issues
-      return this.isAuthenticated();
+      this.clearAuth();
+      return false;
     }
   },
 
-  clearAuth({ clearAllCache = false } = {}) {
-    // Remove from all storage locations synchronously
-    Cookies.remove(TOKEN_KEY, { path: "/" });
-    Cookies.remove(USERNAME_KEY, { path: "/" });
-    sessionStorage.removeItem("token");
-    sessionStorage.removeItem("username");
-    sessionStorage.removeItem(DEMO_MODE_KEY);
-    clearAllPageCaches();
+  async clearAuth({ clearAllCache = false } = {}) {
+    try {
+      await fetch(`${API_URL}/api/auth/logout`, {
+        method: "POST",
+        credentials: "include",
+      });
+    } catch {
+      // no-op
+    }
 
-    // Double-check: force removal with path variations (some cookies might have paths)
-    Cookies.remove(TOKEN_KEY, { path: "/" });
-    Cookies.remove(USERNAME_KEY, { path: "/" });
+    sessionStorage.removeItem(USERNAME_KEY);
+    sessionStorage.removeItem(DEMO_MODE_KEY);
+    sessionStorage.removeItem(AUTH_STATE_KEY);
+    clearAllPageCaches();
 
     if (clearAllCache) {
       try {

@@ -743,6 +743,22 @@ function clampRatingToFiveScale(value) {
   return Math.max(0, Math.min(5, Number(normalized.toFixed(1))));
 }
 
+const TMDB_BASE_URL = "https://api.themoviedb.org/3";
+const TMDB_ALLOWED_PATHS = [
+  "/discover/movie",
+  "/search/movie",
+  "/search/person",
+  "/person/popular",
+  "/trending/person/week",
+  "/movie/",
+  "/person/",
+  "/find/",
+];
+
+function isAllowedTmdbPath(path) {
+  return TMDB_ALLOWED_PATHS.some((prefix) => path.startsWith(prefix));
+}
+
 export async function getRecommendations(req, res) {
   try {
     const userId = req.user.id;
@@ -769,11 +785,10 @@ export async function getRecommendations(req, res) {
     });
 
     if (!mlResponse.ok) {
-      const rawError = await mlResponse.text();
+      await mlResponse.text();
       return res.status(502).json({
         success: false,
         error: "Failed to fetch recommendations from ML service",
-        details: rawError,
       });
     }
 
@@ -847,5 +862,104 @@ export async function getRecommendations(req, res) {
   } catch (error) {
     console.error("Get recommendations error:", error);
     res.status(500).json({ success: false, error: "Failed to get recommendations" });
+  }
+}
+
+export async function proxyTmdbRequest(req, res) {
+  try {
+    const tmdbApiKey = process.env.TMDB_API_KEY;
+    const path = String(req.query.path || "").trim();
+
+    if (!tmdbApiKey) {
+      return res.status(500).json({ success: false, error: "TMDB API key is not configured" });
+    }
+
+    if (!path || !path.startsWith("/") || !isAllowedTmdbPath(path)) {
+      return res.status(400).json({ success: false, error: "Invalid TMDB path" });
+    }
+
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(req.query)) {
+      if (key === "path") continue;
+      if (value === undefined || value === null || value === "") continue;
+      params.set(key, String(value));
+    }
+    params.set("api_key", tmdbApiKey);
+
+    const tmdbResponse = await fetch(`${TMDB_BASE_URL}${path}?${params.toString()}`);
+    const body = await tmdbResponse.text();
+    res.status(tmdbResponse.status);
+    res.setHeader("Content-Type", "application/json; charset=utf-8");
+    return res.send(body);
+  } catch (error) {
+    console.error("TMDB proxy error:", error);
+    return res.status(500).json({ success: false, error: "Failed to fetch TMDB data" });
+  }
+}
+
+export async function generateWeeklyBrief(req, res) {
+  try {
+    const groqApiKey = process.env.GROQ_API_KEY;
+    const upcomingMovies = Array.isArray(req.body?.upcomingMovies) ? req.body.upcomingMovies : [];
+
+    if (!groqApiKey) {
+      return res.status(500).json({ success: false, error: "GROQ API key is not configured" });
+    }
+
+    const movieList = upcomingMovies
+      .slice(0, 10)
+      .map(m => `"${m.title}" (${m.date})${m.director !== "TBA" ? ` directed by ${m.director}` : ""}`)
+      .join(", ");
+
+    const prompt = `Write a professional cinema weekly brief with journalistic flair (2-3 paragraphs, ~180-200 words) about the current film industry landscape.
+
+Include these upcoming releases naturally in the narrative: ${movieList}
+
+Style Requirements:
+- Write like a seasoned entertainment journalist for Variety or The Hollywood Reporter
+- Use sophisticated, engaging prose with industry terminology
+- Create smooth transitions between topics
+- Be enthusiastic but maintain professional credibility
+- Include context about directors, studios, or industry trends when relevant
+- Mention awards season buzz if appropriate
+- NO bullet points, NO lists, NO headers
+- Write in flowing paragraphs only
+
+Write ONLY the brief content - no titles, headers, or extra formatting.`;
+
+    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${groqApiKey}`,
+      },
+      body: JSON.stringify({
+        model: "llama-3.3-70b-versatile",
+        messages: [
+          {
+            role: "system",
+            content: "You are a veteran entertainment journalist writing for a prestigious cinema publication.",
+          },
+          { role: "user", content: prompt },
+        ],
+        max_tokens: 500,
+        temperature: 0.8,
+      }),
+    });
+
+    if (!response.ok) {
+      return res.status(502).json({ success: false, error: "Failed to generate weekly brief" });
+    }
+
+    const data = await response.json();
+    const content = data?.choices?.[0]?.message?.content?.trim();
+    if (!content) {
+      return res.status(502).json({ success: false, error: "Invalid weekly brief response" });
+    }
+
+    return res.json({ success: true, content });
+  } catch (error) {
+    console.error("Weekly brief generation error:", error);
+    return res.status(500).json({ success: false, error: "Failed to generate weekly brief" });
   }
 }

@@ -1,13 +1,29 @@
 import { verifyToken } from "../utils/jwt.js";
 
+function parseCookieToken(cookieHeader) {
+  if (!cookieHeader) return null;
+  const cookies = cookieHeader.split(";").map((part) => part.trim());
+  for (const cookie of cookies) {
+    if (cookie.startsWith("auth_token=")) {
+      return decodeURIComponent(cookie.slice("auth_token=".length));
+    }
+  }
+  return null;
+}
+
 export function authRequired(req, res, next) {
   const header = req.headers.authorization;
+  const cookieToken = parseCookieToken(req.headers.cookie);
 
-  if (!header) return res.status(401).json({ error: "Missing token" });
+  if (!header && !cookieToken) return res.status(401).json({ error: "Missing token" });
 
-  const [scheme, token] = header.split(" ");
-  if (scheme !== "Bearer" || !token) {
-    return res.status(401).json({ error: "Malformed authorization header" });
+  let token = cookieToken;
+  if (header) {
+    const [scheme, bearerToken] = header.split(" ");
+    if (scheme !== "Bearer" || !bearerToken) {
+      return res.status(401).json({ error: "Malformed authorization header" });
+    }
+    token = bearerToken;
   }
 
   try {

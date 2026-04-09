@@ -48,3 +48,25 @@ export const cacheLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
+
+export const tokenConfirmLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: 25,
+  message: {
+    success: false,
+    error: "Too many token confirmation attempts. Please try again later."
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+export const tmdbProxyLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 120,
+  message: {
+    success: false,
+    error: "Too many TMDB requests. Please slow down."
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});

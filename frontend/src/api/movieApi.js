@@ -20,11 +20,6 @@ let watchlistCache = {
 };
 let watchlistInFlight = null;
 
-const getAuthToken = () => {
-  const token = authUtils.getToken();
-  return token;
-};
-
 // Helper to make authenticated requests
 const ensureWritable = () => {
   if (authUtils.isDemoMode()) {
@@ -33,17 +28,11 @@ const ensureWritable = () => {
 };
 
 const fetchWithAuth = async (url, options = {}) => {
-  const token = getAuthToken();
-  
-  if (!token) {
-    throw new Error('Not authenticated. Please log in.');
-  }
-  
   const config = {
     ...options,
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
       ...options.headers,
     },
   };
@@ -102,9 +91,7 @@ const fetchPublic = async (url, options = {}) => {
 };
 
 const isProfileBootstrapFresh = () => {
-  const token = getAuthToken();
-  if (!token) return false;
-  if (profileBootstrapCache.token !== token) return false;
+  if (profileBootstrapCache.token !== authUtils.getUsername()) return false;
 
   return Boolean(profileBootstrapCache.data)
     && Date.now() - profileBootstrapCache.timestamp < PROFILE_BOOTSTRAP_TTL_MS;
@@ -114,14 +101,12 @@ const setProfileBootstrapCache = (data) => {
   profileBootstrapCache = {
     data,
     timestamp: Date.now(),
-    token: getAuthToken(),
+    token: authUtils.getUsername(),
   };
 };
 
 const isWatchlistFresh = () => {
-  const token = getAuthToken();
-  if (!token) return false;
-  if (watchlistCache.token !== token) return false;
+  if (watchlistCache.token !== authUtils.getUsername()) return false;
 
   return watchlistCache.ids instanceof Set
     && Date.now() - watchlistCache.timestamp < WATCHLIST_TTL_MS;
@@ -131,7 +116,7 @@ const setWatchlistCache = (watchlistItems = []) => {
   watchlistCache = {
     ids: new Set((watchlistItems || []).map((item) => Number(item.movie_id))),
     timestamp: Date.now(),
-    token: getAuthToken(),
+    token: authUtils.getUsername(),
   };
 };
 
@@ -317,7 +302,7 @@ export const movieApi = {
   ),
 
   prefetchProfileBootstrap: () => {
-    if (isProfileBootstrapFresh() || profileBootstrapInFlight || !getAuthToken()) {
+    if (isProfileBootstrapFresh() || profileBootstrapInFlight || !authUtils.isAuthenticated()) {
       return;
     }
 
@@ -358,7 +343,7 @@ export const movieApi = {
     if (watchlistCache.ids instanceof Set) {
       watchlistCache.ids.add(Number(movieId));
       watchlistCache.timestamp = Date.now();
-      watchlistCache.token = getAuthToken();
+      watchlistCache.token = authUtils.getUsername();
     } else {
       invalidateWatchlistCache();
     }
@@ -377,7 +362,7 @@ export const movieApi = {
     if (watchlistCache.ids instanceof Set) {
       watchlistCache.ids.delete(Number(movieId));
       watchlistCache.timestamp = Date.now();
-      watchlistCache.token = getAuthToken();
+      watchlistCache.token = authUtils.getUsername();
     } else {
       invalidateWatchlistCache();
     }

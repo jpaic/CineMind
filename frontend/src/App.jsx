@@ -35,15 +35,14 @@ function AppContent() {
   // Initialize auth state on mount - verify token with backend
   useEffect(() => {
     const initAuth = async () => {
-      
       // Start demo session if /demo is opened without auth
       const isDemoRoute = location.pathname === '/demo';
-      const hasToken = authUtils.isAuthenticated();
+      const hasAuthSession = authUtils.isAuthenticated();
 
-      if (isDemoRoute && !hasToken) {
+      if (isDemoRoute && !hasAuthSession) {
         const demoRes = await startDemoSession();
         if (demoRes.success) {
-          authUtils.setAuth(demoRes.token, demoRes.username, false, true);
+          authUtils.setAuth(demoRes.username, true);
           setLoggedIn(true);
           setLoading(false);
           navigate('/home', { replace: true });
@@ -51,19 +50,9 @@ function AppContent() {
         }
       }
 
-      if (!hasToken) {
-        setLoggedIn(false);
-        setLoading(false);
-        return;
-      }
-
-      // Token exists, verify it's valid with backend
       const isValid = await authUtils.verifyToken();
-      
       setLoggedIn(isValid);
       setLoading(false);
-
-      // If token was invalid and we're on a protected route, it will redirect
     };
 
     initAuth();

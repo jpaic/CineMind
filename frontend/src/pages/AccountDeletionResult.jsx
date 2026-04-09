@@ -1,19 +1,21 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { confirmAccountDeletion } from '../api/auth';
 import { authUtils } from '../utils/authUtils';
 
 export default function AccountDeletionResult() {
-  const [searchParams] = useSearchParams();
+  const location = useLocation();
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('Confirming account deletion...');
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
     const run = async () => {
-      const token = searchParams.get('token');
+      const searchParams = new URLSearchParams(location.search);
+      const hashParams = new URLSearchParams(location.hash.replace(/^#/, ""));
+      const token = searchParams.get('token') || hashParams.get('token');
       if (!token) {
         setSuccess(false);
         setMessage('This confirmation link is missing a token.');
@@ -31,7 +33,7 @@ export default function AccountDeletionResult() {
     };
 
     run();
-  }, [searchParams]);
+  }, [location.search, location.hash]);
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-50 flex flex-col">

@@ -20,8 +20,37 @@ const SIGNUP_RESEND_COOLDOWN_SECONDS = 60;
 const ACTION_RESEND_COOLDOWN_SECONDS = 60;
 
 const DEMO_USERNAME = process.env.DEMO_USERNAME || "Demo User";
-const DEMO_USER_ID = Number(process.env.DEMO_USER_ID || 1);
+const DEMO_USER_ID = process.env.DEMO_USER_ID ? Number(process.env.DEMO_USER_ID) : null;
 const DEMO_TOKEN_EXPIRY = process.env.DEMO_TOKEN_EXPIRY || "2h";
+const IS_PROD = process.env.NODE_ENV === "production";
+const AUTH_COOKIE_NAME = "auth_token";
+let authFlowTablesPromise = null;
+
+function buildAuthCookie(token, maxAgeSeconds) {
+  const cookie = [
+    `${AUTH_COOKIE_NAME}=${encodeURIComponent(token)}`,
+    "Path=/",
+    "HttpOnly",
+    "SameSite=Strict",
+    `Max-Age=${maxAgeSeconds}`,
+  ];
+
+  if (IS_PROD) cookie.push("Secure");
+  return cookie.join("; ");
+}
+
+function clearAuthCookie() {
+  const cookie = [
+    `${AUTH_COOKIE_NAME}=`,
+    "Path=/",
+    "HttpOnly",
+    "SameSite=Strict",
+    "Max-Age=0",
+  ];
+
+  if (IS_PROD) cookie.push("Secure");
+  return cookie.join("; ");
+}
 
 function generateRawToken() {
   return crypto.randomBytes(32).toString("hex");
@@ -68,6 +97,17 @@ async function ensureAuthFlowTables() {
   `);
 }
 
+async function ensureAuthFlowTablesReady() {
+  if (!authFlowTablesPromise) {
+    authFlowTablesPromise = ensureAuthFlowTables().catch((error) => {
+      authFlowTablesPromise = null;
+      throw error;
+    });
+  }
+
+  return authFlowTablesPromise;
+}
+
 async function createSignupPendingRecord(username, email, password) {
   const passwordHash = await hashPassword(password);
   const rawToken = generateRawToken();
@@ -87,13 +127,13 @@ async function createSignupPendingRecord(username, email, password) {
     [username, email, passwordHash, tokenHash, SIGNUP_TOKEN_TTL_MINUTES]
   );
 
-  const verifyUrl = `${FRONTEND_URL}/login?verifyToken=${encodeURIComponent(rawToken)}`;
+  const verifyUrl = `${FRONTEND_URL}/login#verifyToken=${encodeURIComponent(rawToken)}`;
   await sendSignupVerificationEmail(email, username, verifyUrl, SIGNUP_TOKEN_TTL_MINUTES);
 }
 
 export async function register(req, res) {
   try {
-    await ensureAuthFlowTables();
+    await ensureAuthFlowTablesReady();
 
     const { username, email, password } = req.body;
 
@@ -146,7 +186,7 @@ export async function register(req, res) {
 
 export async function resendSignupVerification(req, res) {
   try {
-    await ensureAuthFlowTables();
+    await ensureAuthFlowTablesReady();
 
     const { email } = req.body;
     if (!email) {
@@ -191,7 +231,7 @@ export async function resendSignupVerification(req, res) {
       [email, tokenHash, SIGNUP_TOKEN_TTL_MINUTES]
     );
 
-    const verifyUrl = `${FRONTEND_URL}/login?verifyToken=${encodeURIComponent(rawToken)}`;
+    const verifyUrl = `${FRONTEND_URL}/login#verifyToken=${encodeURIComponent(rawToken)}`;
     await sendSignupVerificationEmail(email, pending.username, verifyUrl, SIGNUP_TOKEN_TTL_MINUTES);
 
     return res.json({ success: true, message: "Verification email resent." });
@@ -205,8 +245,8 @@ export async function verifyEmail(req, res) {
   const client = await db.connect();
 
   try {
-    await ensureAuthFlowTables();
-    const token = req.query.token || req.body?.token;
+    await ensureAuthFlowTablesReady();
+    const token = req.body?.token;
 
     if (!token) {
       return res.status(400).json({ success: false, error: "Verification token is required" });
@@ -260,8 +300,10 @@ export async function login(req, res) {
   try {
     const { username, password } = req.body;
     const result = await loginService(username, password);
+    const token = result.token;
 
-    res.json({ success: true, ...result });
+    res.setHeader("Set-Cookie", buildAuthCookie(token, 7 * 24 * 60 * 60));
+    res.json({ success: true, user: result.user });
   } catch (err) {
     res.status(400).json({
       success: false,
@@ -272,6 +314,10 @@ export async function login(req, res) {
 
 export async function createDemoSession(req, res) {
   try {
+    if (!DEMO_USER_ID || !Number.isInteger(DEMO_USER_ID) || DEMO_USER_ID <= 0) {
+      return res.status(503).json({ success: false, error: "Demo user is not configured" });
+    }
+
     const token = generateToken(
       {
         id: DEMO_USER_ID,
@@ -281,9 +327,9 @@ export async function createDemoSession(req, res) {
       DEMO_TOKEN_EXPIRY
     );
 
+    res.setHeader("Set-Cookie", buildAuthCookie(token, 2 * 60 * 60));
     return res.json({
       success: true,
-      token,
       user: {
         id: DEMO_USER_ID,
         username: DEMO_USERNAME,
@@ -392,7 +438,7 @@ export async function resetLibrary(req, res) {
 }
 
 async function issueActionTokenAndEmail(user, actionType, payload, resendLimit, cooldownSeconds) {
-  await ensureAuthFlowTables();
+  await ensureAuthFlowTablesReady();
 
   const existingResult = await db.query(
     `SELECT * FROM account_action_tokens
@@ -477,7 +523,7 @@ export async function requestPasswordChange(req, res) {
       ACTION_RESEND_COOLDOWN_SECONDS
     );
 
-    const confirmUrl = `${FRONTEND_URL}/confirm/password-change?token=${encodeURIComponent(rawToken)}`;
+    const confirmUrl = `${FRONTEND_URL}/confirm/password-change#token=${encodeURIComponent(rawToken)}`;
     await sendPasswordChangeConfirmationEmail(user.email, user.username, confirmUrl, ACTION_TOKEN_TTL_MINUTES);
 
     return res.json({ success: true, message: "Check your email to confirm the password change." });
@@ -493,9 +539,9 @@ export async function requestPasswordChange(req, res) {
 
 export async function confirmPasswordChange(req, res) {
   try {
-    await ensureAuthFlowTables();
+    await ensureAuthFlowTablesReady();
 
-    const token = req.query.token || req.body?.token;
+    const token = req.body?.token;
     if (!token) {
       return res.status(400).json({ success: false, error: "Confirmation token is required" });
     }
@@ -557,7 +603,7 @@ export async function requestAccountDeletion(req, res) {
       ACTION_RESEND_COOLDOWN_SECONDS
     );
 
-    const confirmUrl = `${FRONTEND_URL}/confirm/account-deletion?token=${encodeURIComponent(rawToken)}`;
+    const confirmUrl = `${FRONTEND_URL}/confirm/account-deletion#token=${encodeURIComponent(rawToken)}`;
     await sendAccountDeletionConfirmationEmail(user.email, user.username, confirmUrl, ACTION_TOKEN_TTL_MINUTES);
 
     return res.json({ success: true, message: "Check your email to confirm account deletion." });
@@ -575,9 +621,9 @@ export async function confirmAccountDeletion(req, res) {
   const client = await db.connect();
 
   try {
-    await ensureAuthFlowTables();
+    await ensureAuthFlowTablesReady();
 
-    const token = req.query.token || req.body?.token;
+    const token = req.body?.token;
     if (!token) {
       return res.status(400).json({ success: false, error: "Confirmation token is required" });
     }
@@ -622,3 +668,8 @@ export async function confirmAccountDeletion(req, res) {
 // Backwards-compatible aliases for existing settings actions
 export const changePassword = requestPasswordChange;
 export const deleteAccount = requestAccountDeletion;
+
+export async function logout(req, res) {
+  res.setHeader("Set-Cookie", clearAuthCookie());
+  return res.json({ success: true });
+}

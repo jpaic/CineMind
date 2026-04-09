@@ -4,10 +4,9 @@ import { Search } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { getMovieUrl, getPersonUrl } from '../utils/urlUtils';
+import { tmdbRequest } from '../api/tmdbProxy';
 
-const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
 const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p';
-const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 
 export default function SearchResults() {
   const navigate = useNavigate();
@@ -33,17 +32,10 @@ export default function SearchResults() {
         setLoading(true);
         setError(null);
 
-        const [moviesRes, peopleRes] = await Promise.all([
-          fetch(`${TMDB_BASE_URL}/search/movie?api_key=${API_KEY}&language=en-US&query=${encodeURIComponent(query)}&page=1`),
-          fetch(`${TMDB_BASE_URL}/search/person?api_key=${API_KEY}&language=en-US&query=${encodeURIComponent(query)}&page=1`)
+        const [moviesData, peopleData] = await Promise.all([
+          tmdbRequest('/search/movie', { language: 'en-US', query, page: 1 }),
+          tmdbRequest('/search/person', { language: 'en-US', query, page: 1 })
         ]);
-
-        if (!moviesRes.ok || !peopleRes.ok) {
-          throw new Error('Search failed');
-        }
-
-        const moviesData = await moviesRes.json();
-        const peopleData = await peopleRes.json();
 
         const movies = moviesData.results
           .filter(movie => movie.poster_path)
@@ -73,7 +65,7 @@ export default function SearchResults() {
         // Combine and sort by relevance (movies first, then people)
         const combined = [...movies, ...people];
         setResults(combined);
-      } catch (err) {
+      } catch {
         setError('Failed to search. Please try again.');
       } finally {
         setLoading(false);

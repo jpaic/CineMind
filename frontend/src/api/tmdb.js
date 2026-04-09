@@ -1,7 +1,7 @@
 // frontend/src/api/tmdb.js
-const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
+import { tmdbRequest } from './tmdbProxy';
+
 const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p';
-const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 
 // Cache configuration
 const CACHE_DURATION = 10 * 60 * 1000; // 10 minutes in milliseconds
@@ -59,15 +59,18 @@ export const tmdbService = {
       const startDate = now.toISOString().split('T')[0];
       const endDate = threeMonthsFromNow.toISOString().split('T')[0];
 
-      const response = await fetch(
-        `${TMDB_BASE_URL}/discover/movie?api_key=${API_KEY}&language=en-US&region=US&with_original_language=en&sort_by=popularity.desc&primary_release_date.gte=${startDate}&primary_release_date.lte=${endDate}&with_release_type=3|2&include_adult=false&without_genres=16&page=1`
-      );
-
-      if (!response.ok) {
-        throw new Error(`TMDB API error: ${response.status}`);
-      }
-
-      const data = await response.json();
+      const data = await tmdbRequest('/discover/movie', {
+        language: 'en-US',
+        region: 'US',
+        with_original_language: 'en',
+        sort_by: 'popularity.desc',
+        'primary_release_date.gte': startDate,
+        'primary_release_date.lte': endDate,
+        with_release_type: '3|2',
+        include_adult: 'false',
+        without_genres: '16',
+        page: 1
+      });
       const upcomingFiltered = (data.results || []).filter(movie => {
         if (!movie.release_date) return false;
         const releaseDate = new Date(movie.release_date);
@@ -77,26 +80,20 @@ export const tmdbService = {
       const moviesWithCastData = await Promise.allSettled(
         upcomingFiltered.slice(0, 20).map(async (movie) => {
           try {
-            const creditsRes = await fetch(
-              `${TMDB_BASE_URL}/movie/${movie.id}/credits?api_key=${API_KEY}`
-            );
-
             let cast = [];
             let director = 'TBA';
             let directorId = null;
             let castPopularity = 0;
 
-            if (creditsRes.ok) {
-              const credits = await creditsRes.json();
-              cast = credits.cast || [];
-              const directorObj = credits.crew?.find(person => person.job === 'Director');
-              director = directorObj?.name || 'TBA';
-              directorId = directorObj?.id || null;
+            const credits = await tmdbRequest(`/movie/${movie.id}/credits`);
+            cast = credits.cast || [];
+            const directorObj = credits.crew?.find(person => person.job === 'Director');
+            director = directorObj?.name || 'TBA';
+            directorId = directorObj?.id || null;
 
-              castPopularity = cast
-                .slice(0, 3)
-                .reduce((sum, actor) => sum + (actor.popularity || 0), 0);
-            }
+            castPopularity = cast
+              .slice(0, 3)
+              .reduce((sum, actor) => sum + (actor.popularity || 0), 0);
 
             return {
               movie,
@@ -105,7 +102,7 @@ export const tmdbService = {
               directorId,
               castPopularity
             };
-          } catch (err) {
+          } catch {
             return { movie, cast: [], director: 'TBA', directorId: null, castPopularity: 0 };
           }
         })
@@ -149,7 +146,7 @@ export const tmdbService = {
       };
 
       return finalMovies;
-    } catch (error) {
+    } catch {
       if (cache.upcoming.data) {
         return cache.upcoming.data;
       }
@@ -187,15 +184,18 @@ export const tmdbService = {
       
       // Use discover API with date filters and quality thresholds (exclude animation)
       // SORT BY VOTE_AVERAGE (user rating/score) instead of popularity
-      const response = await fetch(
-        `${TMDB_BASE_URL}/discover/movie?api_key=${API_KEY}&language=en-US&region=US&with_original_language=en&sort_by=vote_average.desc&primary_release_date.gte=${startDate}&primary_release_date.lte=${endDate}&vote_average.gte=6&vote_count.gte=500&without_genres=16&page=1`
-      );
-      
-      if (!response.ok) {
-        throw new Error(`TMDB API error: ${response.status}`);
-      }
-      
-      const data = await response.json();
+      const data = await tmdbRequest('/discover/movie', {
+        language: 'en-US',
+        region: 'US',
+        with_original_language: 'en',
+        sort_by: 'vote_average.desc',
+        'primary_release_date.gte': startDate,
+        'primary_release_date.lte': endDate,
+        'vote_average.gte': 6,
+        'vote_count.gte': 500,
+        without_genres: '16',
+        page: 1
+      });
       
       
       // Take top 10 by vote_average (user score) - already sorted by API
@@ -208,19 +208,13 @@ export const tmdbService = {
           let directorId = null;
           
           try {
-            const creditsRes = await fetch(
-              `${TMDB_BASE_URL}/movie/${movie.id}/credits?api_key=${API_KEY}`
-            );
-            
-            if (creditsRes.ok) {
-              const credits = await creditsRes.json();
-              const directorObj = credits.crew?.find(person => person.job === 'Director');
-              if (directorObj) {
-                director = directorObj.name;
-                directorId = directorObj.id;
-              }
+            const credits = await tmdbRequest(`/movie/${movie.id}/credits`);
+            const directorObj = credits.crew?.find(person => person.job === 'Director');
+            if (directorObj) {
+              director = directorObj.name;
+              directorId = directorObj.id;
             }
-          } catch (err) {
+          } catch {
             // Ignore credit fetch failures and fall back to defaults.
           }
           
@@ -251,7 +245,7 @@ export const tmdbService = {
       };
 
       return successfulMovies;
-    } catch (error) {
+    } catch {
       
       if (cache.popular.data) {
         return cache.popular.data;
@@ -275,15 +269,10 @@ export const tmdbService = {
     }
 
     try {
-      const res = await fetch(
-        `${TMDB_BASE_URL}/person/popular?api_key=${API_KEY}&language=en-US&page=1`
-      );
-
-      if (!res.ok) {
-        throw new Error(`TMDB API error: ${res.status}`);
-      }
-
-      const data = await res.json();
+      const data = await tmdbRequest('/person/popular', {
+        language: 'en-US',
+        page: 1
+      });
 
       const filteredPeople = (data.results || [])
         .filter(person => person.profile_path)
@@ -296,15 +285,7 @@ export const tmdbService = {
       const peopleWithCredits = await Promise.allSettled(
         filteredPeople.slice(0, 10).map(async (person) => {
           try {
-            const creditsRes = await fetch(
-              `${TMDB_BASE_URL}/person/${person.id}/movie_credits?api_key=${API_KEY}`
-            );
-
-            if (!creditsRes.ok) {
-              throw new Error(`Failed to fetch credits for ${person.name}`);
-            }
-
-            const credits = await creditsRes.json();
+            const credits = await tmdbRequest(`/person/${person.id}/movie_credits`);
             const castMovies = credits.cast || [];
 
             const englishMovies = castMovies.filter(
@@ -324,7 +305,7 @@ export const tmdbService = {
               notableWork: notableWorks || 'Various works',
               poster: `${TMDB_IMAGE_BASE}/w500${person.profile_path}`
             };
-          } catch (err) {
+          } catch {
             return null;
           }
         })
@@ -341,7 +322,7 @@ export const tmdbService = {
       };
 
       return transformedData;
-    } catch (error) {
+    } catch {
       if (cache.trending.data) {
         return cache.trending.data;
       }
@@ -404,7 +385,6 @@ export const tmdbService = {
         const pagePromises = Array.from({ length: maxPages }, (_, idx) => {
           const page = idx + 1;
           const params = new URLSearchParams({
-            api_key: API_KEY,
             query: query,
             language: 'en-US',
             page: String(page),
@@ -423,20 +403,10 @@ export const tmdbService = {
             params.set('region', region);
           }
 
-          return fetch(
-            `${TMDB_BASE_URL}/search/movie?${params.toString()}`
-          );
+          return tmdbRequest('/search/movie', Object.fromEntries(params.entries()));
         });
 
-        const responses = await Promise.all(pagePromises);
-        const payloads = await Promise.all(
-          responses.map(async (response) => {
-            if (!response.ok) {
-              throw new Error('Search failed');
-            }
-            return response.json();
-          }),
-        );
+        const payloads = await Promise.all(pagePromises);
 
         const deduped = new Map();
         payloads.forEach((data) => {
@@ -461,7 +431,7 @@ export const tmdbService = {
         });
 
         return Array.from(deduped.values());
-      } catch (error) {
+      } catch {
         return [];
       }
     },
@@ -469,15 +439,10 @@ export const tmdbService = {
     // Get detailed movie information
     getMovieDetails: async (movieId) => {
       try {
-        const [movieRes, creditsRes] = await Promise.all([
-          fetch(`${TMDB_BASE_URL}/movie/${movieId}?api_key=${API_KEY}&language=en-US`),
-          fetch(`${TMDB_BASE_URL}/movie/${movieId}/credits?api_key=${API_KEY}`)
+        const [movie, credits] = await Promise.all([
+          tmdbRequest(`/movie/${movieId}`, { language: 'en-US' }),
+          tmdbRequest(`/movie/${movieId}/credits`)
         ]);
-  
-        if (!movieRes.ok || !creditsRes.ok) throw new Error('Failed to fetch movie details');
-  
-        const movie = await movieRes.json();
-        const credits = await creditsRes.json();
   
         const director = credits.crew?.find(person => person.job === 'Director');
   
@@ -505,13 +470,7 @@ export const tmdbService = {
 
     getMovieBackdropOptions: async (movieId) => {
       try {
-        const response = await fetch(
-          `${TMDB_BASE_URL}/movie/${movieId}/images?api_key=${API_KEY}`
-        );
-
-        if (!response.ok) throw new Error('Failed to fetch movie images');
-
-        const data = await response.json();
+        const data = await tmdbRequest(`/movie/${movieId}/images`);
         const uniquePaths = Array.from(new Set((data.backdrops || []).map((item) => item.file_path).filter(Boolean)));
 
         return uniquePaths.slice(0, 12).map((path) => `${TMDB_IMAGE_BASE}/original${path}`);
@@ -531,15 +490,10 @@ export const tmdbService = {
       }
 
       try {
-        const response = await fetch(
-          `${TMDB_BASE_URL}/find/${encodeURIComponent(normalized)}?api_key=${API_KEY}&external_source=imdb_id&language=en-US`
-        );
-
-        if (!response.ok) {
-          return null;
-        }
-
-        const data = await response.json();
+        const data = await tmdbRequest(`/find/${encodeURIComponent(normalized)}`, {
+          external_source: 'imdb_id',
+          language: 'en-US'
+        });
         const firstMatch = data.movie_results?.[0];
         if (!firstMatch?.id) {
           return null;
@@ -568,7 +522,7 @@ export const tmdbService = {
         return results
           .filter(result => result.status === 'fulfilled' && result.value !== null)
           .map(result => result.value);
-      } catch (error) {
+      } catch {
         return [];
       }
     },

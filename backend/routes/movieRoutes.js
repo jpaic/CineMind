@@ -1,7 +1,7 @@
 import { Router } from "express";
 import * as movieController from "../controllers/movieController.js";
 import { authRequired, blockDemoWrites } from "../middleware/authMiddleware.js";
-import { cacheLimiter } from "../middleware/rateLimiter.js";
+import { cacheLimiter, tmdbProxyLimiter, authLimiter } from "../middleware/rateLimiter.js";
 
 const router = Router();
 
@@ -48,15 +48,18 @@ router.get("/recommendations", authRequired, movieController.getRecommendations)
 router.get("/cache/:movieId", movieController.getCachedMovie);
 
 // Cache movie data
-router.post("/cache", cacheLimiter, movieController.cacheMovie);
+router.post("/cache", authRequired, blockDemoWrites, cacheLimiter, movieController.cacheMovie);
 
 // Cache multiple movies in one request
-router.post("/cache/bulk-write", cacheLimiter, movieController.cacheMoviesBulk);
+router.post("/cache/bulk-write", authRequired, blockDemoWrites, cacheLimiter, movieController.cacheMoviesBulk);
 
 // Get multiple cached movies
 router.post("/cache/bulk", cacheLimiter, movieController.getCachedMovies);
 
 // Clean old cache entries
-router.delete("/cache/cleanup", cacheLimiter, movieController.cleanupCache);
+router.delete("/cache/cleanup", authRequired, blockDemoWrites, cacheLimiter, movieController.cleanupCache);
+
+router.get("/tmdb", tmdbProxyLimiter, movieController.proxyTmdbRequest);
+router.post("/weekly-brief", authRequired, authLimiter, movieController.generateWeeklyBrief);
 
 export default router;

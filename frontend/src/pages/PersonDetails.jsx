@@ -4,10 +4,9 @@ import { User, Calendar, MapPin, ChevronDown, ChevronUp } from 'lucide-react';
 import { getMovieUrl } from '../utils/urlUtils';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
+import { tmdbRequest } from '../api/tmdbProxy';
 
-const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
 const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p';
-const API_KEY = import.meta.env.VITE_TMDB_API_KEY;
 
 export default function PersonDetails() {
   const { id } = useParams();
@@ -25,17 +24,10 @@ export default function PersonDetails() {
         setLoading(true);
         setError(null);
 
-        const [personRes, creditsRes] = await Promise.all([
-          fetch(`${TMDB_BASE_URL}/person/${id}?api_key=${API_KEY}&language=en-US`),
-          fetch(`${TMDB_BASE_URL}/person/${id}/movie_credits?api_key=${API_KEY}`)
+        const [personData, creditsData] = await Promise.all([
+          tmdbRequest(`/person/${id}`, { language: 'en-US' }),
+          tmdbRequest(`/person/${id}/movie_credits`)
         ]);
-
-        if (!personRes.ok || !creditsRes.ok) {
-          throw new Error('Failed to fetch person details');
-        }
-
-        const personData = await personRes.json();
-        const creditsData = await creditsRes.json();
 
         setPerson(personData);
         setCredits(creditsData);
