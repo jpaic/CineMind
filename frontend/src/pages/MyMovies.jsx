@@ -81,8 +81,17 @@ export default function MyMovies() {
       let offset = 0;
       let hasLoadedAnySegment = false;
       let hasSetTotalCount = false;
-      const collectedMovies = [];
+      let hasPaintedFirstSegment = false;
       const collectedHydrationIds = [];
+
+      const appendSegment = (segmentMovies) => {
+        setMovies((prev) => {
+          const next = [...prev, ...segmentMovies];
+          setFilteredMovies(next);
+          writePageCache({ key: 'library', items: next, mutationAware: true });
+          return next;
+        });
+      };
 
       while (true) {
         const libraryData = await movieApi.getLibrary(LIBRARY_BATCH_SIZE, offset);
@@ -128,7 +137,12 @@ export default function MyMovies() {
           };
         });
 
-        collectedMovies.push(...enrichedSegment);
+        appendSegment(enrichedSegment);
+
+        if (!hasPaintedFirstSegment) {
+          setLoading(false);
+          hasPaintedFirstSegment = true;
+        }
 
         if (libraryItems.length < LIBRARY_BATCH_SIZE) {
           break;
@@ -145,11 +159,6 @@ export default function MyMovies() {
         writePageCache({ key: 'library', items: [], mutationAware: true });
         return;
       }
-
-      setMovies(collectedMovies);
-      setFilteredMovies(collectedMovies);
-      setCurrentPage(1);
-      writePageCache({ key: 'library', items: collectedMovies, mutationAware: true });
 
       if (collectedHydrationIds.length > 0) {
         const uniqueHydrationIds = [...new Set(collectedHydrationIds)];
@@ -240,8 +249,9 @@ export default function MyMovies() {
     setCurrentPage(1);
   };
 
-  const visibleMovieCount = filteredMovies.length === movies.length ? totalMovieCount : filteredMovies.length;
-  const totalPages = Math.max(1, Math.ceil(filteredMovies.length / MOVIES_PER_PAGE));
+  const showingUnfilteredList = filteredMovies.length === movies.length;
+  const visibleMovieCount = showingUnfilteredList ? totalMovieCount : filteredMovies.length;
+  const totalPages = Math.max(1, Math.ceil((showingUnfilteredList ? totalMovieCount : filteredMovies.length) / MOVIES_PER_PAGE));
   const safeCurrentPage = Math.min(currentPage, totalPages);
   const pageStartIndex = (safeCurrentPage - 1) * MOVIES_PER_PAGE;
   const paginatedMovies = filteredMovies.slice(pageStartIndex, pageStartIndex + MOVIES_PER_PAGE);
