@@ -75,7 +75,7 @@ async def get_movie_cache_features(movie_id: int) -> dict[str, Any]:
 
     row = await pool.fetchrow(
         """
-        SELECT movie_id, title, year, director, genres, poster_path, vote_average, vote_count, tmdb_popularity
+        SELECT movie_id, title, year, director, genres, poster_path
         FROM movie_cache
         WHERE movie_id = $1
         """,
@@ -104,9 +104,9 @@ async def get_movie_cache_features(movie_id: int) -> dict[str, Any]:
         "poster_path": row["poster_path"],
         "genres": parse_genres(row["genres"]),
         "director": row["director"].strip().lower() if row["director"] else None,
-        "vote_average": float(row["vote_average"]) if row["vote_average"] is not None else None,
-        "vote_count": int(row["vote_count"]) if row["vote_count"] is not None else None,
-        "tmdb_popularity": float(row["tmdb_popularity"]) if row["tmdb_popularity"] is not None else None,
+        "vote_average": None,
+        "vote_count": None,
+        "tmdb_popularity": None,
         "actors": [],
         "keywords": [],
     }
@@ -286,16 +286,27 @@ def decade_alignment_bonus(movie_year: int | None, decade_distribution: dict[int
 
 async def get_editorial_recommendations(limit: int) -> dict[str, Any]:
     assert pool is not None
-    rows = await pool.fetch(
-        """
-        SELECT movie_id, title, year, poster_path, vote_average
-        FROM movie_cache
-        WHERE vote_average >= 7.5
-        ORDER BY vote_average DESC, year DESC NULLS LAST
-        LIMIT $1
-        """,
-        max(limit * 3, 30),
-    )
+    try:
+        rows = await pool.fetch(
+            """
+            SELECT movie_id, title, year, poster_path, vote_average
+            FROM movie_cache
+            WHERE vote_average >= 7.5
+            ORDER BY vote_average DESC, year DESC NULLS LAST
+            LIMIT $1
+            """,
+            max(limit * 3, 30),
+        )
+    except asyncpg.exceptions.UndefinedColumnError:
+        rows = await pool.fetch(
+            """
+            SELECT movie_id, title, year, poster_path
+            FROM movie_cache
+            ORDER BY year DESC NULLS LAST, movie_id DESC
+            LIMIT $1
+            """,
+            max(limit * 3, 30),
+        )
     return {
         "type": "editorial",
         "rated_movies_count": 0,
@@ -305,7 +316,7 @@ async def get_editorial_recommendations(limit: int) -> dict[str, Any]:
                 "title": r["title"],
                 "year": r["year"],
                 "poster_path": r["poster_path"],
-                "vote_average": float(r["vote_average"]) if r["vote_average"] is not None else None,
+                "vote_average": float(r["vote_average"]) if "vote_average" in r.keys() and r["vote_average"] is not None else None,
                 "score": None,
                 "reasons": ["editorial pick"],
             }
@@ -438,7 +449,7 @@ async def score_candidates(user_id: int, limit: int) -> dict[str, Any]:
 
     for row, features in zip(user_rows, rated_features):
         rating = float(row["rating"])
-        recency = compute_recency_factor(row.get("updated_at"))
+        recency = compute_recency_factor(row["updated_at"])
         z_score = (rating - avg_rating) / (std_rating or 1.0)
         weight = z_score * recency
 
