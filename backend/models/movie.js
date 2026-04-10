@@ -49,15 +49,38 @@ export async function addMoviesToLibraryBulk(userId, movies) {
 
 // Get user library
 export async function getUserMovies(userId, limit = 50, offset = 0) {
-  const result = await db.query(
-    `SELECT *
-     FROM user_movies
-     WHERE user_id = $1
-     ORDER BY watched_date DESC
-     LIMIT $2 OFFSET $3`,
+  const moviesResult = await db.query(
+    `WITH ranked_movies AS (
+       SELECT
+         um.*,
+         COUNT(*) OVER()::int AS total_count
+       FROM user_movies um
+       WHERE um.user_id = $1
+       ORDER BY um.watched_date DESC
+       LIMIT $2 OFFSET $3
+     )
+     SELECT *
+     FROM ranked_movies`,
     [userId, limit, offset]
   );
-  return result.rows;
+
+  let total = 0;
+  if (moviesResult.rows.length > 0) {
+    total = moviesResult.rows[0].total_count || 0;
+  } else {
+    const countResult = await db.query(
+      `SELECT COUNT(*)::int AS total
+       FROM user_movies
+       WHERE user_id = $1`,
+      [userId]
+    );
+    total = countResult.rows[0]?.total || 0;
+  }
+
+  return {
+    movies: moviesResult.rows.map(({ total_count, ...movie }) => movie),
+    total,
+  };
 }
 
 // Update rating
