@@ -73,14 +73,24 @@ def bayesian_average(vote_average: float, vote_count: int, m: int = RANKING_MIN_
 async def get_movie_cache_features(movie_id: int) -> dict[str, Any]:
     assert pool is not None
 
-    row = await pool.fetchrow(
-        """
-        SELECT movie_id, title, year, director, genres, poster_path
-        FROM movie_cache
-        WHERE movie_id = $1
-        """,
-        movie_id,
-    )
+    try:
+        row = await pool.fetchrow(
+            """
+            SELECT movie_id, title, year, director, genres, poster_path, vote_average, vote_count, tmdb_popularity
+            FROM movie_cache
+            WHERE movie_id = $1
+            """,
+            movie_id,
+        )
+    except asyncpg.exceptions.UndefinedColumnError:
+        row = await pool.fetchrow(
+            """
+            SELECT movie_id, title, year, director, genres, poster_path, vote_average
+            FROM movie_cache
+            WHERE movie_id = $1
+            """,
+            movie_id,
+        )
 
     if not row:
         return {
@@ -302,7 +312,7 @@ async def get_editorial_recommendations(limit: int) -> dict[str, Any]:
             """
             SELECT movie_id, title, year, poster_path
             FROM movie_cache
-            ORDER BY year DESC NULLS LAST, movie_id DESC
+            ORDER BY year DESC NULLS LAST, last_updated DESC NULLS LAST
             LIMIT $1
             """,
             max(limit * 3, 30),
@@ -316,7 +326,7 @@ async def get_editorial_recommendations(limit: int) -> dict[str, Any]:
                 "title": r["title"],
                 "year": r["year"],
                 "poster_path": r["poster_path"],
-                "vote_average": float(r["vote_average"]) if "vote_average" in r.keys() and r["vote_average"] is not None else None,
+                "vote_average": float(r["vote_average"]) if "vote_average" in r and r["vote_average"] is not None else None,
                 "score": None,
                 "reasons": ["editorial pick"],
             }
