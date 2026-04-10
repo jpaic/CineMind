@@ -1,6 +1,9 @@
 import json
+import math
 import os
 from collections import defaultdict
+from datetime import datetime, timezone
+from statistics import mean, stdev
 from typing import Any
 
 import asyncpg
@@ -21,6 +24,9 @@ CANDIDATE_POOL_SIZE = int(os.getenv("CANDIDATE_POOL_SIZE", "240"))
 TOP_CAST_COUNT = int(os.getenv("TOP_CAST_COUNT", "5"))
 TMDB_CONCURRENCY = int(os.getenv("TMDB_CONCURRENCY", "10"))
 SEED_MOVIE_COUNT = int(os.getenv("SEED_MOVIE_COUNT", "8"))
+RATING_HALF_LIFE_DAYS = int(os.getenv("RATING_HALF_LIFE_DAYS", "730"))
+RANKING_GLOBAL_MEAN = float(os.getenv("RANKING_GLOBAL_MEAN", "6.5"))
+RANKING_MIN_VOTES = int(os.getenv("RANKING_MIN_VOTES", "500"))
 
 pool: asyncpg.Pool | None = None
 http_client: httpx.AsyncClient | None = None
@@ -51,12 +57,25 @@ def parse_genres(raw_genres: Any) -> list[str]:
     return []
 
 
+def compute_recency_factor(updated_at: datetime | None, half_life_days: int = RATING_HALF_LIFE_DAYS) -> float:
+    if updated_at is None:
+        return 0.5
+
+    ref = updated_at if updated_at.tzinfo else updated_at.replace(tzinfo=timezone.utc)
+    days_elapsed = max(0, (datetime.now(timezone.utc) - ref).days)
+    return math.exp(-days_elapsed / max(1, half_life_days))
+
+
+def bayesian_average(vote_average: float, vote_count: int, m: int = RANKING_MIN_VOTES, c: float = RANKING_GLOBAL_MEAN) -> float:
+    return (vote_count * vote_average + m * c) / (vote_count + m)
+
+
 async def get_movie_cache_features(movie_id: int) -> dict[str, Any]:
     assert pool is not None
 
     row = await pool.fetchrow(
         """
-        SELECT movie_id, title, year, director, genres, poster_path
+        SELECT movie_id, title, year, director, genres, poster_path, vote_average, vote_count, tmdb_popularity
         FROM movie_cache
         WHERE movie_id = $1
         """,
@@ -72,6 +91,8 @@ async def get_movie_cache_features(movie_id: int) -> dict[str, Any]:
             "genres": [],
             "director": None,
             "vote_average": None,
+            "vote_count": None,
+            "tmdb_popularity": None,
             "actors": [],
             "keywords": [],
         }
@@ -83,7 +104,9 @@ async def get_movie_cache_features(movie_id: int) -> dict[str, Any]:
         "poster_path": row["poster_path"],
         "genres": parse_genres(row["genres"]),
         "director": row["director"].strip().lower() if row["director"] else None,
-        "vote_average": None,
+        "vote_average": float(row["vote_average"]) if row["vote_average"] is not None else None,
+        "vote_count": int(row["vote_count"]) if row["vote_count"] is not None else None,
+        "tmdb_popularity": float(row["tmdb_popularity"]) if row["tmdb_popularity"] is not None else None,
         "actors": [],
         "keywords": [],
     }
@@ -126,6 +149,16 @@ async def enrich_tmdb_features(base: dict[str, Any]) -> dict[str, Any]:
         if details_data.get("vote_average") is not None:
             try:
                 base["vote_average"] = float(details_data["vote_average"])
+            except (TypeError, ValueError):
+                pass
+        if details_data.get("vote_count") is not None:
+            try:
+                base["vote_count"] = int(details_data["vote_count"])
+            except (TypeError, ValueError):
+                pass
+        if details_data.get("popularity") is not None:
+            try:
+                base["tmdb_popularity"] = float(details_data["popularity"])
             except (TypeError, ValueError):
                 pass
         if not base["genres"]:
@@ -233,14 +266,52 @@ async def get_user_ratings(user_id: int) -> list[asyncpg.Record]:
     assert pool is not None
     rows = await pool.fetch(
         """
-        SELECT movie_id, rating
+        SELECT movie_id, rating, updated_at
         FROM user_movies
         WHERE user_id = $1
-        ORDER BY rating DESC, updated_at DESC NULLS LAST
+        ORDER BY updated_at DESC NULLS LAST, rating DESC
         """,
         user_id,
     )
     return rows
+
+
+def decade_alignment_bonus(movie_year: int | None, decade_distribution: dict[int, int]) -> float:
+    decade = decade_start(movie_year)
+    if decade is None:
+        return 0.0
+    total = sum(decade_distribution.values()) or 1
+    return (decade_distribution.get(decade, 0) / total) * 0.1
+
+
+async def get_editorial_recommendations(limit: int) -> dict[str, Any]:
+    assert pool is not None
+    rows = await pool.fetch(
+        """
+        SELECT movie_id, title, year, poster_path, vote_average
+        FROM movie_cache
+        WHERE vote_average >= 7.5
+        ORDER BY vote_average DESC, year DESC NULLS LAST
+        LIMIT $1
+        """,
+        max(limit * 3, 30),
+    )
+    return {
+        "type": "editorial",
+        "rated_movies_count": 0,
+        "recommendations": [
+            {
+                "movie_id": int(r["movie_id"]),
+                "title": r["title"],
+                "year": r["year"],
+                "poster_path": r["poster_path"],
+                "vote_average": float(r["vote_average"]) if r["vote_average"] is not None else None,
+                "score": None,
+                "reasons": ["editorial pick"],
+            }
+            for r in rows[:limit]
+        ],
+    }
 
 
 async def get_candidate_ids(
@@ -344,18 +415,15 @@ async def get_candidate_ids(
 async def score_candidates(user_id: int, limit: int) -> dict[str, Any]:
     user_rows = await get_user_ratings(user_id)
     if not user_rows:
-        return {
-            "type": "no_ratings",
-            "recommendations": [],
-            "reason": "User has no ratings yet",
-        }
+        return await get_editorial_recommendations(limit)
 
     feature_cache: dict[int, dict[str, Any]] = {}
 
     rated_movies = [int(r["movie_id"]) for r in user_rows]
     rated_set = set(rated_movies)
     ratings = [float(r["rating"]) for r in user_rows]
-    avg_rating = sum(ratings) / len(ratings)
+    avg_rating = mean(ratings)
+    std_rating = stdev(ratings) if len(ratings) > 1 else 1.0
 
     genre_weights: dict[str, float] = defaultdict(float)
     actor_weights: dict[str, float] = defaultdict(float)
@@ -366,16 +434,22 @@ async def score_candidates(user_id: int, limit: int) -> dict[str, Any]:
         *(get_full_movie_features(int(row["movie_id"]), feature_cache) for row in user_rows)
     )
     candidate_year_window = get_candidate_year_window(rated_features, len(user_rows))
+    decade_distribution: dict[int, int] = defaultdict(int)
 
     for row, features in zip(user_rows, rated_features):
         rating = float(row["rating"])
-        # Center around user mean and amplify likes/dislikes.
-        weight = (rating - avg_rating) * 1.25
+        recency = compute_recency_factor(row.get("updated_at"))
+        z_score = (rating - avg_rating) / (std_rating or 1.0)
+        weight = z_score * recency
 
         add_weights(genre_weights, features["genres"], weight)
         add_weights(actor_weights, features["actors"], weight)
         add_weight(director_weights, features["director"], weight)
         add_weights(keyword_weights, features["keywords"], weight)
+        if rating >= avg_rating:
+            decade = decade_start(features.get("year"))
+            if decade is not None:
+                decade_distribution[decade] += 1
 
     candidate_ids = await get_candidate_ids(user_rows, rated_set, CANDIDATE_POOL_SIZE)
 
@@ -394,41 +468,52 @@ async def score_candidates(user_id: int, limit: int) -> dict[str, Any]:
         score = 0.0
         reasons: list[str] = []
 
-        genre_score = sum(genre_weights[g] for g in features["genres"] if g in genre_weights)
+        genre_raw = sum(genre_weights[g] for g in features["genres"] if g in genre_weights)
+        genre_score = genre_raw / math.sqrt(max(len(features["genres"]), 1))
         if genre_score != 0:
-            score += genre_score * 1.35
             if genre_score > 0:
                 reasons.append("genre match")
 
-        actor_score = sum(actor_weights[a] for a in features["actors"] if a in actor_weights)
+        actor_raw = sum(actor_weights[a] for a in features["actors"][:3] if a in actor_weights)
+        actor_score = actor_raw / 3.0
         if actor_score != 0:
-            score += actor_score * 1.1
             if actor_score > 0:
                 reasons.append("actor match")
 
         director_score = director_weights.get(features["director"], 0.0) if features.get("director") else 0.0
         if director_score != 0:
-            score += director_score * 1.05
             if director_score > 0:
                 reasons.append("director match")
 
-        keyword_score = sum(keyword_weights[k] for k in features["keywords"] if k in keyword_weights)
+        keyword_raw = sum(keyword_weights[k] for k in features["keywords"][:10] if k in keyword_weights)
+        keyword_score = keyword_raw / 10.0
         if keyword_score != 0:
-            score += keyword_score
             if keyword_score > 0:
                 reasons.append("keyword match")
 
-        # Quality tie-breaker with low weight so popularity does not dominate.
         vote_average = features.get("vote_average")
+        vote_count = features.get("vote_count")
+        tmdb_popularity = features.get("tmdb_popularity")
         quality_boost = 0.0
-        if isinstance(vote_average, (float, int)):
-            quality_boost = max(0.0, (float(vote_average) - 6.0) * 0.03)
-            score += quality_boost
+        if isinstance(vote_average, (float, int)) and isinstance(vote_count, int) and vote_count > 0:
+            quality_boost = (bayesian_average(float(vote_average), vote_count) - 5.0) / 5.0
+        novelty_boost = 0.0
+        if isinstance(tmdb_popularity, (float, int)):
+            novelty_boost = max(0.0, 1.0 - math.log1p(float(tmdb_popularity)) / 10.0)
+        decade_bonus = decade_alignment_bonus(features.get("year"), decade_distribution)
+
+        affinity_score = (
+            genre_score * 0.40
+            + director_score * 0.30
+            + actor_score * 0.20
+            + keyword_score * 0.10
+        )
+        score = affinity_score * 0.60 + quality_boost * 0.25 + novelty_boost * 0.05 + decade_bonus
 
         positive_score = (
-            max(genre_score, 0) * 1.35
-            + max(actor_score, 0) * 1.1
-            + max(director_score, 0) * 1.05
+            max(genre_score, 0)
+            + max(actor_score, 0)
+            + max(director_score, 0)
             + max(keyword_score, 0)
         )
 
@@ -440,6 +525,8 @@ async def score_candidates(user_id: int, limit: int) -> dict[str, Any]:
                 "poster_path": features["poster_path"],
                 "vote_average": vote_average,
                 "score": round(score, 4),
+                "affinity_score": round(affinity_score, 4),
+                "quality_score": round(quality_boost, 4),
                 "positive_score": round(positive_score, 4),
                 "positive_signal_count": sum(
                     1
@@ -452,6 +539,7 @@ async def score_candidates(user_id: int, limit: int) -> dict[str, Any]:
                     if component > 0
                 ),
                 "reasons": sorted(set(reasons))[:3],
+                "sources": ["content_based"],
             }
         )
 
@@ -482,6 +570,7 @@ async def score_candidates(user_id: int, limit: int) -> dict[str, Any]:
     return {
         "type": "personalized" if len(user_rows) >= MIN_RATED_MOVIES else "sparse_personalized",
         "rated_movies_count": len(user_rows),
+        "computed_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
         "recommendations": filtered[:limit],
     }
 
@@ -541,5 +630,6 @@ async def recommend(
         "user_id": user_id,
         "limit": limit,
         "algorithm": "hybrid_seeded_content_v2",
+        "algorithm_version": "2.0.0",
         **payload,
     }
